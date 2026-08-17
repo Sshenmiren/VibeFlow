@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(git --version)",
+      "Read(//c/Users/AcademicEsu/Desktop/vibecode/LLMengine/**)",
+      "Bash(npx -y skills add dietrichgebert/ponytail@ponytail -g -y)",
+      "Bash(git init *)",
+      "Bash(claude --version)",
+      "Bash(claude -p \"Reply with exactly: OK\" --output-format json --max-turns 1)",
+      "WebSearch",
+      "Bash(claude -p \"What is 2+2? Answer with just the number.\" --setting-sources project --output-format json --max-turns 1)",
+      "Bash(npm install *)",
+      "Bash(node -e \"import\\('typescript'\\).then\\(ts=>console.log\\('ts version:', ts.version, '| resolveModuleName:', typeof ts.resolveModuleName\\)\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"import\\('typescript'\\).then\\(ts=>console.log\\('ts:', ts.version, typeof ts.resolveModuleName\\)\\)\")",
+      "Bash(node -e \"console.log\\('vite:', require\\('./node_modules/vite/package.json'\\).version\\)\")",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(npx tsx *)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m 'MVP 骨架：分析引擎 + AI 层 + 前端舆图界面 *)",
+      "Bash(git config *)"
+    ]
+  }
+}
