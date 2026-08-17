@@ -6,9 +6,10 @@ import { analyzeFull, analyzeIncremental } from './analyzer.ts';
 import { bizNodesTouchingFiles, buildTechGraph, computeImpact } from './graph.ts';
 import { askNode, generateExplanations, getOrGenerateExplanation, factsHashFor } from './explain.ts';
 import {
-  acceptChangeSet, createChangeSet, ensureGitRepo, executeChangeSet,
+  acceptChangeSet, createBlueprintChangeSet, createChangeSet, ensureGitRepo, executeChangeSet,
   isWorkingTreeClean, rollbackChangeSet, snapshotCommit,
 } from './modify.ts';
+import type { Blueprint, ViewLayouts } from '../shared/types.ts';
 import { addToRegistry, getSettings, listRegistry, ProjectStore, projectIdFor, saveSettings } from './store.ts';
 import { generateViews } from './views.ts';
 import { emit, subscribe } from './sse.ts';
@@ -274,6 +275,47 @@ app.get('/api/projects/:id/file', wrap((req, res) => {
 app.get('/api/projects/:id/timeline', wrap((req, res) => {
   const session = getSession(p(req, 'id'));
   res.json(session.store.getTimeline());
+}));
+
+// 用户拖动的节点位置（按视图持久化，箭头随 React Flow 自动跟随）
+app.get('/api/projects/:id/layout', wrap((req, res) => {
+  const session = getSession(p(req, 'id'));
+  res.json(session.store.getLayouts());
+}));
+
+app.put('/api/projects/:id/layout', wrap((req, res) => {
+  const session = getSession(p(req, 'id'));
+  const body = req.body as { view?: string; positions?: Record<string, { x: number; y: number }> };
+  if (!body.view || !body.positions) throw new HttpError(400, '缺少 view/positions');
+  const layouts: ViewLayouts = session.store.getLayouts();
+  layouts[body.view] = { ...layouts[body.view], ...body.positions };
+  session.store.saveLayouts(layouts);
+  res.json({ ok: true });
+}));
+
+// 构建蓝图：自由画布 → 打包发给 AI
+app.get('/api/projects/:id/blueprint', wrap((req, res) => {
+  const session = getSession(p(req, 'id'));
+  res.json(session.store.getBlueprint());
+}));
+
+app.put('/api/projects/:id/blueprint', wrap((req, res) => {
+  const session = getSession(p(req, 'id'));
+  const body = req.body as Blueprint;
+  if (!Array.isArray(body.blocks) || !Array.isArray(body.connections)) throw new HttpError(400, '蓝图格式不对');
+  session.store.saveBlueprint({
+    blocks: body.blocks.slice(0, 60),
+    connections: body.connections.slice(0, 120),
+    updatedAt: new Date().toISOString(),
+  });
+  res.json({ ok: true });
+}));
+
+app.post('/api/projects/:id/blueprint/send', wrap((req, res) => {
+  const session = getSession(p(req, 'id'));
+  const cs = createBlueprintChangeSet(session.store, session.store.getBlueprint());
+  emit({ type: 'changeset', projectId: p(req, 'id'), changeSet: cs });
+  res.json(cs);
 }));
 
 // 修改闭环

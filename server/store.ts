@@ -3,7 +3,8 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import type {
-  AiSettings, BusinessViews, ChangeSet, FileFact, NodeExplanation, ProjectMeta, TimelineEvent,
+  AiSettings, Blueprint, BusinessViews, ChangeSet, FileFact, NodeExplanation, ProjectMeta,
+  TimelineEvent, ViewLayouts,
 } from '../shared/types.ts';
 
 // ---------- 通用 JSON 读写（原子写） ----------
@@ -96,6 +97,14 @@ export class ProjectStore {
   /** 节点问答的 claude 会话续接（省 token） */
   getSessions(): Record<string, string> { return readJson(this.file('sessions.json'), {}); }
   saveSessions(s: Record<string, string>) { writeJson(this.file('sessions.json'), s); }
+
+  /** 构建蓝图（用户自由画布） */
+  getBlueprint(): Blueprint { return readJson(this.file('blueprint.json'), { blocks: [], connections: [], updatedAt: '' } as Blueprint); }
+  saveBlueprint(b: Blueprint) { writeJson(this.file('blueprint.json'), b); }
+
+  /** 用户拖动后的节点位置 */
+  getLayouts(): ViewLayouts { return readJson(this.file('layouts.json'), {}); }
+  saveLayouts(l: ViewLayouts) { writeJson(this.file('layouts.json'), l); }
 }
 
 export function contentHash(content: string): string {

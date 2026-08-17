@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { simpleGit, type SimpleGit } from 'simple-git';
-import type { ChangeSet, TestRun } from '../shared/types.ts';
+import type { Blueprint, ChangeSet, TestRun } from '../shared/types.ts';
 import { getProvider } from './ai/provider.ts';
 import { computeImpact } from './graph.ts';
 import { findNode, sourceSlices } from './explain.ts';
@@ -93,6 +93,49 @@ export function createChangeSet(store: ProjectStore, nodeId: string, instruction
   return cs;
 }
 
+/** 构建蓝图 → 修改单：把用户画的模块和连线序列化成给 AI 的实现说明 */
+export function createBlueprintChangeSet(store: ProjectStore, blueprint: Blueprint): ChangeSet {
+  if (blueprint.blocks.length === 0) throw new Error('蓝图是空的——先拖入至少一个模块');
+  const byId = new Map(blueprint.blocks.map(b => [b.id, b]));
+  const lines: string[] = ['用户在可视化蓝图里画出了想要的功能结构。每个模块和每条连线的含义都是用户亲手写的，请照此在项目里实现：', '', '== 模块 =='];
+  blueprint.blocks.forEach((b, i) => {
+    lines.push(`${i + 1}. 【${b.title || '未命名模块'}】${b.desc || '（用户没写说明）'}`);
+  });
+  if (blueprint.connections.length > 0) {
+    lines.push('', '== 连线（流向/触发关系） ==');
+    for (const c of blueprint.connections) {
+      const s = byId.get(c.source)?.title || '?';
+      const t = byId.get(c.target)?.title || '?';
+      lines.push(`- 「${s}」→「${t}」：${c.label || '（用户没写这条线的含义）'}`);
+    }
+  }
+  lines.push('', '实现要求：贴合项目现有技术栈和代码风格；模块可以映射为文件/函数/页面，由你判断最自然的落法；保持最小可用实现。');
+  const instruction = lines.join('\n');
+
+  const cs: ChangeSet = {
+    id: crypto.randomUUID().slice(0, 8),
+    nodeId: 'blueprint',
+    nodeTitle: '构建蓝图',
+    instruction,
+    status: 'planned',
+    plan: {
+      files: [],
+      affectedNodeIds: [],
+      note: `将实现 ${blueprint.blocks.length} 个模块、${blueprint.connections.length} 条连接。AI 会自行探索项目结构决定代码放哪；完成后展示完整 diff 供你确认。`,
+    },
+    diff: null,
+    changedFiles: [],
+    tests: [],
+    aiCostUsd: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const all = store.getChangeSets();
+  all.unshift(cs);
+  store.saveChangeSets(all);
+  return cs;
+}
+
 // ---------- 执行：claude 改代码 → git diff ----------
 
 export async function executeChangeSet(
@@ -113,18 +156,18 @@ export async function executeChangeSet(
   const filesFacts = store.getFiles();
   update(cs, { status: 'executing' });
 
-  const fileList = cs.plan?.files.map(f => `- ${f}`).join('\n') ?? '';
-  const context = found ? sourceSlices(root, found.node, filesFacts, 8000) : '';
+  const fileList = cs.plan?.files.length
+    ? `这个环节对应的文件：\n${cs.plan.files.map(f => `- ${f}`).join('\n')}`
+    : '没有预先定位的文件——请自行探索项目结构，把代码放在最自然的位置。';
+  const context = found ? `相关源码片段（可能不完整，请自行读取完整文件）：\n${sourceSlices(root, found.node, filesFacts, 8000)}` : '';
   const prompt = `你在一个真实项目里执行一次精确的代码修改。
 
-用户看到的环节：「${cs.nodeTitle}」${found ? `—— ${found.node.summary}` : ''}
-用户的修改要求（自然语言）：
+任务来源：「${cs.nodeTitle}」${found ? `—— ${found.node.summary}` : ''}
+用户的要求（自然语言）：
 ${cs.instruction}
 
-这个环节对应的文件：
 ${fileList}
 
-相关源码片段（可能不完整，请自行读取完整文件）：
 ${context}
 
 要求：

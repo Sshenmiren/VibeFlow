@@ -39,7 +39,12 @@
       "Bash(npm test *)",
       "Bash(rm -rf \"C:\\\\Users\\\\AcademicEsu\\\\Downloads\\\\wdad-empty-test\")",
       "Bash(git commit -q -m '验收完成：jsonrepair 兜底、增量技术栈更新、git 身份兜底、浏览器测试 *)",
-      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>console.log\\('$'+JSON.parse\\(d\\).totalCostUsd\\)\\)\")"
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>console.log\\('$'+JSON.parse\\(d\\).totalCostUsd\\)\\)\")",
+      "Bash(curl -s http://localhost:5177/api/projects/86e213dc4a62/blueprint)",
+      "Bash(curl -s -X PUT http://localhost:5177/api/projects/86e213dc4a62/blueprint -H \"content-type: application/json\" -d '{\"blocks\":[{\"id\":\"t1\",\"title\":\"test\",\"desc\":\"d\",\"x\":1,\"y\":2}],\"connections\":[]}')",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 34568)",
+      "Bash(git commit -q -m '构建蓝图模式 + 节点拖动持久化 *)"
     ]
   }
 }

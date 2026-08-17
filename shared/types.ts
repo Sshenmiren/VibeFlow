@@ -210,6 +210,32 @@ export interface TimelineEvent {
   costUsd?: number;
 }
 
+// ---------- 构建蓝图（用户自由画布：模块和连线的含义都由用户自己写） ----------
+
+export interface BlueprintBlock {
+  id: string;
+  title: string; // 用户写：这个模块叫什么
+  desc: string; // 用户写：这个模块做什么
+  x: number;
+  y: number;
+}
+
+export interface BlueprintConnection {
+  id: string;
+  source: string;
+  target: string;
+  label: string; // 用户写：这条线传什么/触发什么
+}
+
+export interface Blueprint {
+  blocks: BlueprintBlock[];
+  connections: BlueprintConnection[];
+  updatedAt: string;
+}
+
+/** 用户手动拖动后的节点位置（按视图分开存） */
+export type ViewLayouts = Record<string, Record<string, { x: number; y: number }>>;
+
 // ---------- 项目与设置 ----------
 
 export interface ProjectMeta {

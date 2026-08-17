@@ -6,12 +6,13 @@ const VIEW_META: { key: ActiveView; icon: string; label: string; desc: string; d
   { key: 'pageflow', icon: '📄', label: '页面流程', desc: '点了按钮去哪里' },
   { key: 'dataflow', icon: '💾', label: '数据流', desc: '数据从哪来到哪去', dev: false },
   { key: 'tech', icon: '⚙️', label: '技术关系', desc: '文件与文件的关系', dev: true },
+  { key: 'builder', icon: '🧩', label: '构建蓝图', desc: '自己画模块，让 AI 实现' },
 ];
 
 export function Sidebar() {
   const { views, activeView, setActiveView, devMode, selectedNodeId, selectNode, generatingViews, generateViews, meta } = useApp();
 
-  const currentView = activeView === 'tech' ? null : views?.views.find(v => v.kind === activeView);
+  const currentView = (activeView === 'tech' || activeView === 'builder') ? null : views?.views.find(v => v.kind === activeView);
 
   return (
     <nav className="sidebar" aria-label="视图与目录">

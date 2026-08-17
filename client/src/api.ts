@@ -1,6 +1,6 @@
 import type {
-  AiSettings, BusinessViews, ChangeSet, ImpactResult, NodeExplanation,
-  ProjectMeta, ServerEvent, TechGraph, TimelineEvent,
+  AiSettings, Blueprint, BusinessViews, ChangeSet, ImpactResult, NodeExplanation,
+  ProjectMeta, ServerEvent, TechGraph, TimelineEvent, ViewLayouts,
 } from '../../shared/types.ts';
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
@@ -48,6 +48,13 @@ export const api = {
   rollbackChangeSet: (id: string, csId: string) =>
     req<ChangeSet>(`/api/projects/${id}/changesets/${csId}/rollback`, { method: 'POST' }),
   snapshot: (id: string) => req<{ ok: true }>(`/api/projects/${id}/snapshot`, { method: 'POST' }),
+  layout: (id: string) => req<ViewLayouts>(`/api/projects/${id}/layout`),
+  saveLayout: (id: string, view: string, positions: Record<string, { x: number; y: number }>) =>
+    req<{ ok: true }>(`/api/projects/${id}/layout`, { method: 'PUT', body: JSON.stringify({ view, positions }) }),
+  blueprint: (id: string) => req<Blueprint>(`/api/projects/${id}/blueprint`),
+  saveBlueprint: (id: string, b: Omit<Blueprint, 'updatedAt'>) =>
+    req<{ ok: true }>(`/api/projects/${id}/blueprint`, { method: 'PUT', body: JSON.stringify(b) }),
+  sendBlueprint: (id: string) => req<ChangeSet>(`/api/projects/${id}/blueprint/send`, { method: 'POST' }),
   settings: () => req<AiSettings>('/api/settings'),
   saveSettings: (s: Partial<AiSettings>) => req<AiSettings>('/api/settings', { method: 'PUT', body: JSON.stringify(s) }),
 };
