@@ -1,3 +1,4 @@
+import { jsonrepair } from 'jsonrepair';
 import { getSettings } from '../store.ts';
 import { ClaudeCliProvider } from './claudeCli.ts';
 import { OpenAICompatProvider } from './openaiCompat.ts';
@@ -36,12 +37,18 @@ export function getProvider(): AiProvider {
   return new ClaudeCliProvider(s);
 }
 
-/** 从 AI 输出中提取 JSON（容忍 ```json 围栏和前后闲话） */
+/** 从 AI 输出中提取 JSON（容忍 ```json 围栏、前后闲话、未转义引号等常见毛病） */
 export function extractJson(text: string): unknown {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   const candidate = fenced ? fenced[1] : text;
   const start = candidate.indexOf('{');
   const end = candidate.lastIndexOf('}');
   if (start === -1 || end <= start) throw new Error('AI 输出中找不到 JSON');
-  return JSON.parse(candidate.slice(start, end + 1));
+  const raw = candidate.slice(start, end + 1);
+  try {
+    return JSON.parse(raw);
+  } catch {
+    // 模型常见的 JSON 毛病（字符串里的英文引号、尾逗号…）交给 jsonrepair
+    return JSON.parse(jsonrepair(raw));
+  }
 }

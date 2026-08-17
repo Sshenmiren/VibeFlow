@@ -21,7 +21,25 @@
       "Bash(npm run *)",
       "Bash(git add *)",
       "Bash(git commit -q -m 'MVP 骨架：分析引擎 + AI 层 + 前端舆图界面 *)",
-      "Bash(git config *)"
+      "Bash(git config *)",
+      "Bash(curl -s http://localhost:5177/api/registry)",
+      "Bash(curl -s -X POST http://localhost:5177/api/projects -H \"content-type: application/json\" -d \"{\\\\\"path\\\\\": \\\\\"C:\\\\\\\\\\\\\\\\Users\\\\\\\\\\\\\\\\AcademicEsu\\\\\\\\\\\\\\\\Desktop\\\\\\\\\\\\\\\\vibecode\\\\\\\\\\\\\\\\LLMengine\\\\\"}\")",
+      "Bash(curl -s -X POST http://localhost:5177/api/projects -H \"content-type: application/json\" -d '{\"path\": \"C:/Users/AcademicEsu/Desktop/vibecode/LLMengine\"}')",
+      "Bash(curl -s -X POST http://localhost:5177/api/projects/86e213dc4a62/views/generate --max-time 400)",
+      "Bash(curl -s http://localhost:5177/api/projects/86e213dc4a62/views)",
+      "Bash(curl -s http://localhost:5177/api/settings)",
+      "Bash(time curl -s \"http://localhost:5177/api/projects/86e213dc4a62/nodes/journey%3Astart_game/explanation\" --max-time 300)",
+      "Bash(time curl *)",
+      "Bash(curl -s -X POST \"http://localhost:5177/api/projects/86e213dc4a62/nodes/journey%3Astart_game/ask\" -H \"content-type: application/json\" -d '{\"question\": \"如果我想让开场白更短一点，要改哪里？\"}' --max-time 300)",
+      "Bash(node -e \"const v = JSON.parse\\(require\\('fs'\\).readFileSync\\('C:/Users/AcademicEsu/Desktop/vibecode/LLMengine/.whatdidaido/meta.json','utf8'\\)\\); console.log\\('改动前版本:', v.analysisVersion\\)\")",
+      "Bash(echo \"\")",
+      "Bash(echo \"# whatdidaido watcher test\")",
+      "Bash(npm i *)",
+      "Bash(npx playwright *)",
+      "Bash(npm test *)",
+      "Bash(rm -rf \"C:\\\\Users\\\\AcademicEsu\\\\Downloads\\\\wdad-empty-test\")",
+      "Bash(git commit -q -m '验收完成：jsonrepair 兜底、增量技术栈更新、git 身份兜底、浏览器测试 *)",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>console.log\\('$'+JSON.parse\\(d\\).totalCostUsd\\)\\)\")"
     ]
   }
 }

@@ -80,6 +80,7 @@ export async function analyzeIncremental(
   store.saveFiles(files);
   const updated: ProjectMeta = {
     ...meta,
+    techStack: detectTechStack(root, Object.keys(files)),
     analysisVersion: meta.analysisVersion + 1,
     analyzedAt: new Date().toISOString(),
     gitCommit: await currentCommit(root),
