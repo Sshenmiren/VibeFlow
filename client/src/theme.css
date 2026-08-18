@@ -263,6 +263,25 @@ textarea { resize: vertical; }
   font-weight: 700;
 }
 
+/* 新构想草稿节点：朱砂虚线，一眼可辨"还不存在" */
+.map-node.draft {
+  border-style: dashed;
+  border-color: var(--cinnabar);
+  background: var(--card);
+}
+.biz-handle, .draft-handle {
+  width: 9px !important;
+  height: 9px !important;
+  background: var(--cinnabar) !important;
+  border: 1.5px solid var(--card) !important;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.draft-handle { opacity: 0.9; }
+.react-flow__node:hover .biz-handle,
+.react-flow__node:hover .draft-handle,
+.react-flow__node.connectablestart .biz-handle { opacity: 0.9; }
+
 /* React Flow 覆盖 */
 .react-flow__attribution { display: none; }
 .react-flow__edge-path { stroke: var(--ink-2); stroke-width: 1.5; }

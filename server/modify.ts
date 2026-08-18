@@ -93,35 +93,62 @@ export function createChangeSet(store: ProjectStore, nodeId: string, instruction
   return cs;
 }
 
-/** 构建蓝图 → 修改单：把用户画的模块和连线序列化成给 AI 的实现说明 */
-export function createBlueprintChangeSet(store: ProjectStore, blueprint: Blueprint): ChangeSet {
-  if (blueprint.blocks.length === 0) throw new Error('蓝图是空的——先拖入至少一个模块');
-  const byId = new Map(blueprint.blocks.map(b => [b.id, b]));
-  const lines: string[] = ['用户在可视化蓝图里画出了想要的功能结构。每个模块和每条连线的含义都是用户亲手写的，请照此在项目里实现：', '', '== 模块 =='];
-  blueprint.blocks.forEach((b, i) => {
+/**
+ * 视图上的新构想 → 修改单。
+ * 用户直接在（比如）用户旅程图上画了新模块并连到现有环节：
+ * 草稿模块的文字全由用户写；连到的现有节点提供真实源码上下文（sourceRefs）。
+ */
+export function createDraftChangeSet(store: ProjectStore, blueprint: Blueprint, viewKind: string): ChangeSet {
+  const blocks = blueprint.blocks.filter(b => b.view === viewKind);
+  const cons = blueprint.connections.filter(c => c.view === viewKind);
+  if (blocks.length === 0) throw new Error('这个视图上还没有画新构想——先点「＋ 突发奇想」加一个模块');
+
+  const views = store.getViews();
+  const view = views?.views.find(v => v.kind === viewKind);
+  const realById = new Map((view?.nodes ?? []).map(n => [n.id, n]));
+  const draftById = new Map(blocks.map(b => [b.id, b]));
+
+  const nameOf = (id: string) => draftById.get(id)?.title || realById.get(id)?.title || '?';
+  const involvedReal = new Set<string>();
+  for (const c of cons) {
+    if (realById.has(c.source)) involvedReal.add(c.source);
+    if (realById.has(c.target)) involvedReal.add(c.target);
+  }
+
+  const lines: string[] = [
+    `用户在「${view?.title ?? viewKind}」视图上勾画了一个新构想：新画的模块和每条连线的含义都是用户亲手写的，其中【现有环节】是项目里已经存在的真实功能。请把这个构想在项目里实现出来：`,
+    '', '== 新模块（待实现） ==',
+  ];
+  blocks.forEach((b, i) => {
     lines.push(`${i + 1}. 【${b.title || '未命名模块'}】${b.desc || '（用户没写说明）'}`);
   });
-  if (blueprint.connections.length > 0) {
+  if (cons.length > 0) {
     lines.push('', '== 连线（流向/触发关系） ==');
-    for (const c of blueprint.connections) {
-      const s = byId.get(c.source)?.title || '?';
-      const t = byId.get(c.target)?.title || '?';
-      lines.push(`- 「${s}」→「${t}」：${c.label || '（用户没写这条线的含义）'}`);
+    for (const c of cons) {
+      const mark = (id: string) => realById.has(id) ? `【现有环节】${nameOf(id)}` : `「${nameOf(id)}」`;
+      lines.push(`- ${mark(c.source)} → ${mark(c.target)}：${c.label || '（用户没写这条线的含义）'}`);
     }
   }
-  lines.push('', '实现要求：贴合项目现有技术栈和代码风格；模块可以映射为文件/函数/页面，由你判断最自然的落法；保持最小可用实现。');
-  const instruction = lines.join('\n');
+  if (involvedReal.size > 0) {
+    lines.push('', '== 涉及的现有环节（真实源码位置） ==');
+    for (const id of involvedReal) {
+      const n = realById.get(id)!;
+      lines.push(`- ${n.title}：${n.summary}；源码 → ${n.sourceRefs.map(r => r.file + (r.symbol ? `#${r.symbol}` : '')).join(', ')}`);
+    }
+  }
+  lines.push('', '实现要求：贴合项目现有技术栈和代码风格；与现有环节的衔接必须真实接上（不是另起炉灶）；保持最小可用实现。');
 
+  const files = [...new Set([...involvedReal].flatMap(id => realById.get(id)!.sourceRefs.map(r => r.file)))];
   const cs: ChangeSet = {
     id: crypto.randomUUID().slice(0, 8),
     nodeId: 'blueprint',
-    nodeTitle: '构建蓝图',
-    instruction,
+    nodeTitle: `新构想（${view?.title ?? viewKind}）`,
+    instruction: lines.join('\n'),
     status: 'planned',
     plan: {
-      files: [],
-      affectedNodeIds: [],
-      note: `将实现 ${blueprint.blocks.length} 个模块、${blueprint.connections.length} 条连接。AI 会自行探索项目结构决定代码放哪；完成后展示完整 diff 供你确认。`,
+      files,
+      affectedNodeIds: [...involvedReal],
+      note: `将实现 ${blocks.length} 个新模块、${cons.length} 条连接${involvedReal.size ? `，并接入 ${involvedReal.size} 个现有环节` : ''}。完成后展示完整 diff 供你确认。`,
     },
     diff: null,
     changedFiles: [],

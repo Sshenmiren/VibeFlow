@@ -54,7 +54,8 @@ export const api = {
   blueprint: (id: string) => req<Blueprint>(`/api/projects/${id}/blueprint`),
   saveBlueprint: (id: string, b: Omit<Blueprint, 'updatedAt'>) =>
     req<{ ok: true }>(`/api/projects/${id}/blueprint`, { method: 'PUT', body: JSON.stringify(b) }),
-  sendBlueprint: (id: string) => req<ChangeSet>(`/api/projects/${id}/blueprint/send`, { method: 'POST' }),
+  sendBlueprint: (id: string, view: string) =>
+    req<ChangeSet>(`/api/projects/${id}/blueprint/send`, { method: 'POST', body: JSON.stringify({ view }) }),
   settings: () => req<AiSettings>('/api/settings'),
   saveSettings: (s: Partial<AiSettings>) => req<AiSettings>('/api/settings', { method: 'PUT', body: JSON.stringify(s) }),
 };

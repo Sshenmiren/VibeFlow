@@ -5,7 +5,7 @@ import type {
 } from '../../shared/types.ts';
 import { api, subscribeEvents } from './api.ts';
 
-export type ActiveView = ViewKind | 'tech' | 'builder';
+export type ActiveView = ViewKind | 'tech';
 
 interface AppState {
   meta: ProjectMeta | null;

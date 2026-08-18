@@ -6,7 +6,7 @@ import { analyzeFull, analyzeIncremental } from './analyzer.ts';
 import { bizNodesTouchingFiles, buildTechGraph, computeImpact } from './graph.ts';
 import { askNode, generateExplanations, getOrGenerateExplanation, factsHashFor } from './explain.ts';
 import {
-  acceptChangeSet, createBlueprintChangeSet, createChangeSet, ensureGitRepo, executeChangeSet,
+  acceptChangeSet, createChangeSet, createDraftChangeSet, ensureGitRepo, executeChangeSet,
   isWorkingTreeClean, rollbackChangeSet, snapshotCommit,
 } from './modify.ts';
 import type { Blueprint, ViewLayouts } from '../shared/types.ts';
@@ -313,7 +313,9 @@ app.put('/api/projects/:id/blueprint', wrap((req, res) => {
 
 app.post('/api/projects/:id/blueprint/send', wrap((req, res) => {
   const session = getSession(p(req, 'id'));
-  const cs = createBlueprintChangeSet(session.store, session.store.getBlueprint());
+  const view = String((req.body as { view?: string }).view ?? '');
+  if (!view) throw new HttpError(400, '缺少 view');
+  const cs = createDraftChangeSet(session.store, session.store.getBlueprint(), view);
   emit({ type: 'changeset', projectId: p(req, 'id'), changeSet: cs });
   res.json(cs);
 }));

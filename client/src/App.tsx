@@ -4,12 +4,11 @@ import { Landing } from './components/Landing.tsx';
 import { TopBar } from './components/TopBar.tsx';
 import { Sidebar } from './components/Sidebar.tsx';
 import { MapCanvas } from './components/MapCanvas.tsx';
-import { BuilderCanvas } from './components/BuilderCanvas.tsx';
 import { DetailPanel } from './components/DetailPanel.tsx';
 import { Timeline } from './components/Timeline.tsx';
 
 export default function App() {
-  const { meta, openProject, closeProject, selectedNodeId, selectNode, toast, showToast, activeView } = useApp();
+  const { meta, openProject, closeProject, selectedNodeId, selectNode, toast, showToast } = useApp();
   const [loading, setLoading] = useState(false);
 
   const handleOpen = useCallback((id: string) => {
@@ -50,13 +49,12 @@ export default function App() {
     );
   }
 
-  const hasRightPanel = activeView === 'builder' || selectedNodeId != null;
   return (
-    <div className={`shell ${hasRightPanel ? '' : 'no-detail'}`}>
+    <div className={`shell ${selectedNodeId ? '' : 'no-detail'}`}>
       <TopBar onHome={() => { closeProject(); localStorage.removeItem('wdad:last-project'); }} />
       <Sidebar />
-      {activeView === 'builder' ? <BuilderCanvas /> : <MapCanvas />}
-      {selectedNodeId && activeView !== 'builder' && <DetailPanel />}
+      <MapCanvas />
+      {selectedNodeId && <DetailPanel />}
       <Timeline />
       {toast && <div className={`toast ${toast.kind}`} role="status">{toast.text}</div>}
     </div>

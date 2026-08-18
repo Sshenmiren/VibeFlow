@@ -218,13 +218,17 @@ export interface BlueprintBlock {
   desc: string; // 用户写：这个模块做什么
   x: number;
   y: number;
+  /** 画在哪个视图上（journey/features/pageflow/dataflow） */
+  view: string;
 }
 
 export interface BlueprintConnection {
   id: string;
+  /** 可以是草稿模块 id，也可以是视图里真实节点的 id（构想接入现有环节） */
   source: string;
   target: string;
   label: string; // 用户写：这条线传什么/触发什么
+  view: string;
 }
 
 export interface Blueprint {

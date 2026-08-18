@@ -44,7 +44,8 @@
       "Bash(curl -s -X PUT http://localhost:5177/api/projects/86e213dc4a62/blueprint -H \"content-type: application/json\" -d '{\"blocks\":[{\"id\":\"t1\",\"title\":\"test\",\"desc\":\"d\",\"x\":1,\"y\":2}],\"connections\":[]}')",
       "Bash(netstat -ano)",
       "Bash(taskkill //F //PID 34568)",
-      "Bash(git commit -q -m '构建蓝图模式 + 节点拖动持久化 *)"
+      "Bash(git commit -q -m '构建蓝图模式 + 节点拖动持久化 *)",
+      "Bash(git commit -q -m '突发奇想：在业务视图上直接画新构想并连接现有环节交给 AI 实现 *)"
     ]
   }
 }
