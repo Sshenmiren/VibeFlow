@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useApp } from './store.ts';
+import { selectActiveDraftCs, useApp } from './store.ts';
 import { Landing } from './components/Landing.tsx';
 import { TopBar } from './components/TopBar.tsx';
 import { Sidebar } from './components/Sidebar.tsx';
@@ -8,7 +8,8 @@ import { DetailPanel } from './components/DetailPanel.tsx';
 import { Timeline } from './components/Timeline.tsx';
 
 export default function App() {
-  const { meta, openProject, closeProject, selectedNodeId, selectNode, toast, showToast } = useApp();
+  const { meta, openProject, closeProject, selectedNodeId, selectNode, toast, showToast, changesets, dismissedDraftCsId } = useApp();
+  const hasDraftPanel = selectActiveDraftCs({ changesets, dismissedDraftCsId }) != null;
   const [loading, setLoading] = useState(false);
 
   const handleOpen = useCallback((id: string) => {
@@ -50,7 +51,7 @@ export default function App() {
   }
 
   return (
-    <div className={`shell ${selectedNodeId ? '' : 'no-detail'}`}>
+    <div className={`shell ${selectedNodeId || hasDraftPanel ? '' : 'no-detail'}`}>
       <TopBar onHome={() => { closeProject(); localStorage.removeItem('wdad:last-project'); }} />
       <Sidebar />
       <MapCanvas />

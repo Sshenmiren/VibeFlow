@@ -22,6 +22,11 @@ interface AppState {
   analysisProgress: AnalysisProgress | null;
   generatingViews: boolean;
   toast: { text: string; kind: 'info' | 'error' } | null;
+  /** 修改执行中的实时直播（csId → 进度行） */
+  modifyLogs: Record<string, string[]>;
+  /** 用户点了"放弃/好的"的构想修改单 */
+  dismissedDraftCsId: string | null;
+  dismissDraftCs: (id: string | null) => void;
 
   openProject: (id: string) => Promise<void>;
   closeProject: () => void;
@@ -30,6 +35,7 @@ interface AppState {
   selectNode: (id: string | null) => void;
   setDevMode: (on: boolean) => void;
   generateViews: () => Promise<void>;
+  refreshViews: () => Promise<void>;
   showToast: (text: string, kind?: 'info' | 'error') => void;
   refreshSettings: () => Promise<void>;
   updateChangeSet: (cs: ChangeSet) => void;
@@ -37,6 +43,12 @@ interface AppState {
 
 let unsubscribe: (() => void) | null = null;
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** 当前活跃的构想修改单（未接受/未回滚/未被用户放弃） */
+export function selectActiveDraftCs(s: Pick<AppState, 'changesets' | 'dismissedDraftCsId'>) {
+  return s.changesets.find(c =>
+    c.nodeId === 'blueprint' && c.id !== s.dismissedDraftCsId && !['accepted', 'rolledback'].includes(c.status)) ?? null;
+}
 
 export const useApp = create<AppState>((set, get) => ({
   meta: null,
@@ -52,11 +64,16 @@ export const useApp = create<AppState>((set, get) => ({
   analysisProgress: null,
   generatingViews: false,
   toast: null,
+  modifyLogs: {},
+  dismissedDraftCsId: null,
+  dismissDraftCs(id) { set({ dismissedDraftCsId: id }); },
 
   async openProject(id: string) {
     unsubscribe?.();
-    const [meta, settings] = await Promise.all([api.project(id), api.settings()]);
-    set({ meta, settings, selectedNodeId: null, staleNodeIds: new Set() });
+    const [meta, settings, stale] = await Promise.all([
+      api.project(id), api.settings(), api.stale(id).catch(() => ({ files: [], nodeIds: [] })),
+    ]);
+    set({ meta, settings, selectedNodeId: null, staleNodeIds: new Set(stale.nodeIds) });
     await get().refreshAll();
 
     unsubscribe = subscribeEvents(id, (e: ServerEvent) => {
@@ -84,6 +101,12 @@ export const useApp = create<AppState>((set, get) => ({
         case 'changeset':
           s.updateChangeSet(e.changeSet);
           break;
+        case 'modify:log': {
+          const logs = { ...s.modifyLogs };
+          logs[e.csId] = [...(logs[e.csId] ?? []), e.line].slice(-120);
+          set({ modifyLogs: logs });
+          break;
+        }
         case 'views:stale': {
           const stale = new Set(s.staleNodeIds);
           for (const nid of e.staleNodeIds) stale.add(nid);
@@ -124,6 +147,23 @@ export const useApp = create<AppState>((set, get) => ({
       const views = await api.generateViews(id);
       set({ views, staleNodeIds: new Set() });
       void get().refreshSettings();
+    } catch (err) {
+      get().showToast((err as Error).message, 'error');
+    } finally {
+      set({ generatingViews: false });
+    }
+  },
+
+  /** 增量刷新：只重新翻译受变化影响的视图（比整图重生成便宜得多） */
+  async refreshViews() {
+    const id = get().meta?.id;
+    if (!id) return;
+    set({ generatingViews: true });
+    try {
+      const views = await api.refreshViews(id);
+      set({ views, staleNodeIds: new Set() });
+      void get().refreshSettings();
+      get().showToast('过期部分已刷新 ✓');
     } catch (err) {
       get().showToast((err as Error).message, 'error');
     } finally {

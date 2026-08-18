@@ -9,7 +9,7 @@ const VIEW_META: { key: ActiveView; icon: string; label: string; desc: string; d
 ];
 
 export function Sidebar() {
-  const { views, activeView, setActiveView, devMode, selectedNodeId, selectNode, generatingViews, generateViews, meta } = useApp();
+  const { views, activeView, setActiveView, devMode, selectedNodeId, selectNode, generatingViews, generateViews, refreshViews, staleNodeIds, meta } = useApp();
 
   const currentView = activeView === 'tech' ? null : views?.views.find(v => v.kind === activeView);
 
@@ -27,11 +27,18 @@ export function Sidebar() {
         </button>
       ))}
 
+      {views && staleNodeIds.size > 0 && (
+        <button style={{ width: '100%', fontSize: 12, marginTop: 8, borderColor: 'var(--amber)', color: 'var(--amber)' }}
+          onClick={() => void refreshViews()} disabled={generatingViews}
+          title="只重新翻译受代码变化影响的部分，比整图重生成便宜得多">
+          {generatingViews ? <><span className="spin" /> 刷新中…</> : `🔄 刷新过期部分（${staleNodeIds.size} 个环节）`}
+        </button>
+      )}
       {views && (
-        <button className="ghost" style={{ width: '100%', fontSize: 11, marginTop: 8, color: 'var(--ink-3)' }}
+        <button className="ghost" style={{ width: '100%', fontSize: 11, marginTop: 4, color: 'var(--ink-3)' }}
           onClick={() => void generateViews()} disabled={generatingViews}
-          title="代码变化大时可以重新生成地图">
-          {generatingViews ? <><span className="spin" /> 重新绘制中…</> : '↻ 重新生成地图'}
+          title="代码变化大时可以整图重新生成">
+          {generatingViews ? <><span className="spin" /> 绘制中…</> : '↻ 整图重新生成'}
         </button>
       )}
 

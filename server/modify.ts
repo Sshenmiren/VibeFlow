@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { simpleGit, type SimpleGit } from 'simple-git';
-import type { Blueprint, ChangeSet, TestRun } from '../shared/types.ts';
+import type { Blueprint, ChangeSet, CheckBaseline, TestRun } from '../shared/types.ts';
 import { getProvider } from './ai/provider.ts';
 import { computeImpact } from './graph.ts';
 import { findNode, sourceSlices } from './explain.ts';
@@ -168,20 +168,18 @@ export function createDraftChangeSet(store: ProjectStore, blueprint: Blueprint, 
 export async function executeChangeSet(
   store: ProjectStore, csId: string,
   onUpdate: (cs: ChangeSet) => void,
+  onLog?: (line: string) => void,
 ): Promise<ChangeSet> {
   const root = store.projectRoot;
   const all = store.getChangeSets();
   const cs = all.find(c => c.id === csId);
   if (!cs) throw new Error(`修改单不存在：${csId}`);
   if (cs.status !== 'planned') throw new Error(`当前状态不能执行：${cs.status}`);
+  if (!(await isWorkingTreeClean(root))) throw new Error('DIRTY_TREE');
 
-  if (!(await isWorkingTreeClean(root))) {
-    throw new Error('DIRTY_TREE');
-  }
-
+  const baseline = await ensureBaseline(store, cs, all, onUpdate);
   const found = findNode(store, cs.nodeId);
   const filesFacts = store.getFiles();
-  update(cs, { status: 'executing' });
 
   const fileList = cs.plan?.files.length
     ? `这个环节对应的文件：\n${cs.plan.files.map(f => `- ${f}`).join('\n')}`
@@ -204,17 +202,71 @@ ${context}
 4. 不要动 .whatdidaido 目录
 5. 改完后简要说明你改了什么（中文，2-4句）`;
 
+  return runModification(store, cs, all, prompt, undefined, baseline, onUpdate, onLog);
+}
+
+/** 对话式继续调整：不满意 diff？在同一会话上追加指令，原地更新改动 */
+export async function refineChangeSet(
+  store: ProjectStore, csId: string, instruction: string,
+  onUpdate: (cs: ChangeSet) => void,
+  onLog?: (line: string) => void,
+): Promise<ChangeSet> {
+  const all = store.getChangeSets();
+  const cs = all.find(c => c.id === csId);
+  if (!cs) throw new Error(`修改单不存在：${csId}`);
+  if (cs.status !== 'tested' && cs.status !== 'diffed') throw new Error(`当前状态不能继续调整：${cs.status}`);
+  if (!cs.sessionId) throw new Error('这个修改没有可续接的 AI 会话（可能用的是 OpenAI 模式）——请撤销后重新描述');
+
+  const baseline = await ensureBaseline(store, cs, all, onUpdate);
+  cs.refinements = [...(cs.refinements ?? []), instruction];
+  const prompt = `继续调整你刚才在这个项目里做的修改。用户看过 diff 后的新要求：
+${instruction}
+
+要求：在已有改动的基础上继续（不要推翻重来，除非用户要求）；保持最小变更；不要运行命令、不要 git 操作；改完简要说明（中文，1-3句）。`;
+
+  return runModification(store, cs, all, prompt, cs.sessionId, baseline, onUpdate, onLog);
+}
+
+/** 首次修改前记录基线：这个 commit 下各检查本来过不过 */
+async function ensureBaseline(
+  store: ProjectStore, cs: ChangeSet, all: ChangeSet[], onUpdate: (cs: ChangeSet) => void,
+): Promise<CheckBaseline> {
+  const root = store.projectRoot;
+  const headCommit = (await git(root).revparse(['HEAD'])).trim();
+  let baseline = store.getBaseline(headCommit);
+  if (!baseline) {
+    applyPatch(store, cs, all, { status: 'testing' }, onUpdate);
+    baseline = (await runProjectChecks(root)).map(r => ({ command: r.command, ok: r.ok }));
+    store.saveBaseline(headCommit, baseline);
+  }
+  return baseline;
+}
+
+/** 共用执行管线：AI 改码（可流式/可续接）→ git diff → 检查+基线对比 */
+async function runModification(
+  store: ProjectStore, cs: ChangeSet, all: ChangeSet[],
+  prompt: string, resumeSession: string | undefined, baseline: CheckBaseline,
+  onUpdate: (cs: ChangeSet) => void,
+  onLog?: (line: string) => void,
+): Promise<ChangeSet> {
+  const root = store.projectRoot;
+  const update = (patch: Partial<ChangeSet>) => applyPatch(store, cs, all, patch, onUpdate);
+  update({ status: 'executing' });
+
   const provider = getProvider();
   const result = await provider.generate({
     prompt,
     cwd: root,
     allowEdits: true,
+    resumeSession,
     timeoutMs: 15 * 60_000,
+    onProgress: onLog,
   });
 
   cs.aiCostUsd += result.costUsd;
+  if (result.sessionId) cs.sessionId = result.sessionId;
   if (result.isError) {
-    update(cs, { status: 'failed', error: result.errorMessage });
+    update({ status: 'failed', error: result.errorMessage });
     return cs;
   }
 
@@ -226,11 +278,11 @@ ${context}
   await g.reset(['HEAD']);
 
   if (!diff.trim()) {
-    update(cs, { status: 'failed', error: `AI 没有产生任何文件改动。它说：${result.text.slice(0, 300)}` });
+    update({ status: 'failed', error: `AI 没有产生任何文件改动。它说：${result.text.slice(0, 300)}` });
     return cs;
   }
 
-  update(cs, {
+  update({
     status: 'diffed',
     diff: diff.length > 400_000 ? diff.slice(0, 400_000) + '\n…(diff 过长已截断)' : diff,
     changedFiles: nameOnly,
@@ -245,17 +297,19 @@ ${context}
     costUsd: result.costUsd,
   });
 
-  // 自动跑测试
-  update(cs, { status: 'testing' });
-  cs.tests = await runProjectChecks(root);
-  update(cs, { status: 'tested' });
+  update({ status: 'testing' });
+  cs.tests = compareWithBaseline(baseline, await runProjectChecks(root));
+  update({ status: 'tested' });
   return cs;
+}
 
-  function update(target: ChangeSet, patch: Partial<ChangeSet>) {
-    Object.assign(target, patch, { updatedAt: new Date().toISOString() });
-    store.saveChangeSets(all);
-    onUpdate(target);
-  }
+function applyPatch(
+  store: ProjectStore, cs: ChangeSet, all: ChangeSet[],
+  patch: Partial<ChangeSet>, onUpdate: (cs: ChangeSet) => void,
+) {
+  Object.assign(cs, patch, { updatedAt: new Date().toISOString() });
+  store.saveChangeSets(all);
+  onUpdate(cs);
 }
 
 export async function acceptChangeSet(store: ProjectStore, csId: string): Promise<ChangeSet> {
@@ -269,6 +323,11 @@ export async function acceptChangeSet(store: ProjectStore, csId: string): Promis
   cs.status = 'accepted';
   cs.updatedAt = new Date().toISOString();
   store.saveChangeSets(all);
+  // 接受后磁盘状态 == 刚测过的状态 → 直接作为新 commit 的基线，省一次全量检查
+  if (cs.tests.length > 0) {
+    const newHead = (await g.revparse(['HEAD'])).trim();
+    store.saveBaseline(newHead, cs.tests.map(t => ({ command: t.command, ok: t.ok })));
+  }
   store.addTimelineEvent({ kind: 'modify', title: `✓ 已接受修改「${cs.nodeTitle}」`, changeSetId: cs.id, files: cs.changedFiles });
   return cs;
 }
@@ -290,6 +349,17 @@ export async function rollbackChangeSet(store: ProjectStore, csId: string): Prom
 }
 
 // ---------- 测试/检查运行 ----------
+
+/** 与基线对比，标记哪些失败是这次修改新弄出来的 */
+export function compareWithBaseline(baseline: CheckBaseline | null, runs: TestRun[]): TestRun[] {
+  return runs.map(r => {
+    if (!baseline) return { ...r, newFailure: undefined };
+    if (r.ok) return { ...r, newFailure: false };
+    const prev = baseline.find(b => b.command === r.command);
+    // 基线里没跑过这条命令 → 保守视为新增失败
+    return { ...r, newFailure: prev ? prev.ok : true };
+  });
+}
 
 /** 探测项目可运行的检查命令：package.json scripts + Python 语法检查 */
 export function detectChecks(root: string): { cwd: string; command: string; label: string }[] {

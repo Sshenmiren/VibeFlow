@@ -23,6 +23,8 @@ export const api = {
   graph: (id: string) => req<TechGraph>(`/api/projects/${id}/graph`),
   views: (id: string) => req<BusinessViews | null>(`/api/projects/${id}/views`),
   generateViews: (id: string) => req<BusinessViews>(`/api/projects/${id}/views/generate`, { method: 'POST' }),
+  refreshViews: (id: string) => req<BusinessViews>(`/api/projects/${id}/views/refresh`, { method: 'POST' }),
+  stale: (id: string) => req<{ files: string[]; nodeIds: string[] }>(`/api/projects/${id}/stale`),
   explanation: (id: string, nodeId: string) =>
     req<NodeExplanation>(`/api/projects/${id}/nodes/${encodeURIComponent(nodeId)}/explanation`),
   explainAll: (id: string, kind: string) =>
@@ -43,6 +45,10 @@ export const api = {
     }),
   executeChangeSet: (id: string, csId: string) =>
     req<{ started: true }>(`/api/projects/${id}/changesets/${csId}/execute`, { method: 'POST' }),
+  refineChangeSet: (id: string, csId: string, instruction: string) =>
+    req<{ started: true }>(`/api/projects/${id}/changesets/${csId}/refine`, {
+      method: 'POST', body: JSON.stringify({ instruction }),
+    }),
   acceptChangeSet: (id: string, csId: string) =>
     req<ChangeSet>(`/api/projects/${id}/changesets/${csId}/accept`, { method: 'POST' }),
   rollbackChangeSet: (id: string, csId: string) =>

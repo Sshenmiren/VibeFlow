@@ -1,13 +1,28 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeSet } from '../../../shared/types.ts';
 import { api } from '../api.ts';
 import { useApp } from '../store.ts';
 import { DiffView } from './DiffView.tsx';
 
-/** 修改单全生命周期展示：计划 → 执行 → diff → 测试 → 接受/回滚。节点修改和构建蓝图共用。 */
+/** 修改单全生命周期展示：计划 → 执行(直播) → diff → 测试 → 继续调整 / 接受 / 回滚。节点修改和新构想共用。 */
 export function ChangeSetProgress({ projectId, cs, onReset }: { projectId: string; cs: ChangeSet; onReset?: () => void }) {
-  const { updateChangeSet, showToast, refreshSettings, refreshAll } = useApp();
+  const { updateChangeSet, showToast, refreshSettings, refreshAll, modifyLogs } = useApp();
   const [busy, setBusy] = useState<string | null>(null);
+  const [refineText, setRefineText] = useState('');
+  const logs = modifyLogs[cs.id] ?? [];
+  const logEndRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { logEndRef.current?.scrollIntoView({ block: 'nearest' }); }, [logs.length]);
+
+  const refine = async () => {
+    const text = refineText.trim();
+    if (!text) return;
+    setBusy('refine');
+    try {
+      await api.refineChangeSet(projectId, cs.id, text);
+      setRefineText('');
+    } catch (err) { showToast((err as Error).message, 'error'); }
+    finally { setBusy(null); }
+  };
 
   const execute = async () => {
     setBusy('execute');
@@ -74,8 +89,20 @@ export function ChangeSetProgress({ projectId, cs, onReset }: { projectId: strin
         </div>
       )}
 
-      {cs.status === 'executing' && <p style={{ marginTop: 10 }}><span className="spin" /> AI 正在写代码…（可能需要几分钟，完成后自动显示改动）</p>}
-      {cs.status === 'testing' && <p style={{ marginTop: 10 }}><span className="spin" /> 改动完成，正在运行测试和检查…</p>}
+      {cs.status === 'executing' && (
+        <div style={{ marginTop: 10 }}>
+          <p style={{ margin: '0 0 6px' }}><span className="spin" /> AI 正在干活（实时直播）：</p>
+          <div className="mono" style={{
+            fontSize: 11, background: 'var(--paper-2)', border: '1px solid var(--line)',
+            borderRadius: 6, padding: '6px 10px', maxHeight: 150, overflowY: 'auto',
+          }}>
+            {logs.length === 0 && <div style={{ color: 'var(--ink-3)' }}>启动中…</div>}
+            {logs.map((l, i) => <div key={i}>{l}</div>)}
+            <div ref={logEndRef} />
+          </div>
+        </div>
+      )}
+      {cs.status === 'testing' && <p style={{ marginTop: 10 }}><span className="spin" /> 正在运行测试和检查…（首次会先记录一次基线）</p>}
 
       {cs.status === 'failed' && (
         <div style={{ background: 'var(--cinnabar-soft)', borderRadius: 6, padding: 10, marginTop: 10, fontSize: 13 }}>
@@ -98,7 +125,9 @@ export function ChangeSetProgress({ projectId, cs, onReset }: { projectId: strin
               {cs.tests.map((t, i) => (
                 <details key={i} style={{ fontSize: 12, marginBottom: 4 }}>
                   <summary style={{ cursor: 'pointer' }}>
-                    {t.ok ? '✅' : '❌'} <span className="mono">{t.command}</span>
+                    {t.ok ? '✅' : t.newFailure === false ? '⚠️' : '❌'} <span className="mono">{t.command}</span>
+                    {!t.ok && t.newFailure === false && <span style={{ color: 'var(--amber)' }}>（修改前就是挂的，不怪这次）</span>}
+                    {!t.ok && t.newFailure === true && <span style={{ color: 'var(--danger)', fontWeight: 700 }}>（这次修改弄挂的！）</span>}
                     <span style={{ color: 'var(--ink-3)' }}>（{(t.durationMs / 1000).toFixed(1)}s）</span>
                   </summary>
                   <pre className="mono" style={{ fontSize: 11, background: 'var(--paper-2)', padding: 8, borderRadius: 4, overflowX: 'auto', maxHeight: 150 }}>{t.outputTail || '(无输出)'}</pre>
@@ -107,17 +136,40 @@ export function ChangeSetProgress({ projectId, cs, onReset }: { projectId: strin
             </>
           )}
           {cs.status === 'tested' && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button className="primary" onClick={() => void accept()} disabled={busy != null}>
-                {busy === 'accept' ? <span className="spin" /> : '✓'} 接受修改
-              </button>
-              <button onClick={() => void rollback()} disabled={busy != null}>
-                {busy === 'rollback' ? <span className="spin" /> : '↩'} 全部撤销
-              </button>
-            </div>
+            <>
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <button className="primary" onClick={() => void accept()} disabled={busy != null}>
+                  {busy === 'accept' ? <span className="spin" /> : '✓'} 接受修改
+                </button>
+                <button onClick={() => void rollback()} disabled={busy != null}>
+                  {busy === 'rollback' ? <span className="spin" /> : '↩'} 全部撤销
+                </button>
+              </div>
+              {cs.sessionId && (
+                <div style={{ marginTop: 10 }}>
+                  <div className="section-label">不太满意？直接说怎么调（在原改动上继续，不推翻）</div>
+                  {(cs.refinements ?? []).map((r, i) => (
+                    <div key={i} style={{ fontSize: 11, color: 'var(--ink-3)' }}>↻ 已调整过：{r}</div>
+                  ))}
+                  <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                    <input style={{ flex: 1 }} value={refineText}
+                      placeholder="比如：按钮改放到左边 / 弹窗字再大一点…"
+                      onChange={e => setRefineText(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') void refine(); }}
+                      aria-label="继续调整" />
+                    <button onClick={() => void refine()} disabled={busy != null || !refineText.trim()}>
+                      {busy === 'refine' ? <span className="spin" /> : '↻'} 继续调整
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
-          {cs.tests.some(t => !t.ok) && cs.status === 'tested' && (
-            <p style={{ fontSize: 12, color: 'var(--amber)', marginTop: 6 }}>⚠️ 有检查未通过——可能是项目本来就有的问题，也可能是这次改出来的。可以撤销，也可以接受后再让 AI 修。</p>
+          {cs.tests.some(t => t.newFailure) && cs.status === 'tested' && (
+            <p style={{ fontSize: 12, color: 'var(--danger)', marginTop: 6 }}>❌ 这次修改弄挂了一些检查——建议「全部撤销」，或用下面的继续调整让 AI 修好它。</p>
+          )}
+          {cs.tests.some(t => !t.ok && t.newFailure === false) && !cs.tests.some(t => t.newFailure) && cs.status === 'tested' && (
+            <p style={{ fontSize: 12, color: 'var(--amber)', marginTop: 6 }}>⚠️ 有检查没过，但都是修改前就存在的问题，与这次改动无关。</p>
           )}
         </>
       )}

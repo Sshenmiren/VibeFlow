@@ -3,8 +3,8 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import type {
-  AiSettings, Blueprint, BusinessViews, ChangeSet, FileFact, NodeExplanation, ProjectMeta,
-  TimelineEvent, ViewLayouts,
+  AiSettings, Blueprint, BusinessViews, ChangeSet, CheckBaseline, FileFact, NodeExplanation,
+  ProjectMeta, TimelineEvent, ViewLayouts,
 } from '../shared/types.ts';
 
 // ---------- 通用 JSON 读写（原子写） ----------
@@ -105,6 +105,35 @@ export class ProjectStore {
   /** 用户拖动后的节点位置 */
   getLayouts(): ViewLayouts { return readJson(this.file('layouts.json'), {}); }
   saveLayouts(l: ViewLayouts) { writeJson(this.file('layouts.json'), l); }
+
+  /** 待处理的过期信息：自上次视图生成/刷新以来变化的文件与受影响节点（服务端持久化，刷新页面不丢标记） */
+  getPendingStale(): { files: string[]; nodeIds: string[] } {
+    return readJson(this.file('pending-stale.json'), { files: [], nodeIds: [] });
+  }
+  addPendingStale(files: string[], nodeIds: string[]) {
+    const cur = this.getPendingStale();
+    writeJson(this.file('pending-stale.json'), {
+      files: [...new Set([...cur.files, ...files])],
+      nodeIds: [...new Set([...cur.nodeIds, ...nodeIds])],
+    });
+  }
+  clearPendingStale() {
+    writeJson(this.file('pending-stale.json'), { files: [], nodeIds: [] });
+  }
+
+  /** 各 commit 的检查基线（区分"本来就挂"和"新弄挂的"） */
+  getBaseline(commit: string): CheckBaseline | null {
+    const all = readJson<Record<string, CheckBaseline>>(this.file('baselines.json'), {});
+    return all[commit] ?? null;
+  }
+  saveBaseline(commit: string, baseline: CheckBaseline) {
+    const all = readJson<Record<string, CheckBaseline>>(this.file('baselines.json'), {});
+    all[commit] = baseline;
+    // 只留最近 20 个 commit 的基线
+    const keys = Object.keys(all);
+    if (keys.length > 20) for (const k of keys.slice(0, keys.length - 20)) delete all[k];
+    writeJson(this.file('baselines.json'), all);
+  }
 }
 
 export function contentHash(content: string): string {

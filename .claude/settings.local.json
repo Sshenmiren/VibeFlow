@@ -45,7 +45,41 @@
       "Bash(netstat -ano)",
       "Bash(taskkill //F //PID 34568)",
       "Bash(git commit -q -m '构建蓝图模式 + 节点拖动持久化 *)",
-      "Bash(git commit -q -m '突发奇想：在业务视图上直接画新构想并连接现有环节交给 AI 实现 *)"
+      "Bash(git commit -q -m '突发奇想：在业务视图上直接画新构想并连接现有环节交给 AI 实现 *)",
+      "Bash(npx -y skills add mattpocock/skills@grill-me -g -y)",
+      "Bash(npx -y skills add mattpocock/skills@tdd -g -y)",
+      "Bash(npx -y skills add vercel-labs/agent-skills@vercel-react-best-practices -g -y)",
+      "Read(//c/Users/AcademicEsu/.claude/skills/**)",
+      "Read(//c/Users/AcademicEsu/.agents/skills/grill-me/**)",
+      "Read(//c/Users/AcademicEsu/.agents/skills/vercel-react-best-practices/**)",
+      "Bash(node -e \"console.log\\('mcp sdk:', require\\('./node_modules/@modelcontextprotocol/sdk/package.json'\\).version\\)\")",
+      "Bash(git checkout *)",
+      "Bash(claude -p --output-format json --setting-sources project --max-turns 1)",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{try{const j=JSON.parse\\(d.slice\\(d.indexOf\\('{'\\)\\)\\);console.log\\('is_error:',j.is_error,'|',String\\(j.result\\).slice\\(0,100\\)\\)}catch{console.log\\('raw:',d.slice\\(0,150\\)\\)}}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{try{const j=JSON.parse\\(d.slice\\(d.indexOf\\('{'\\)\\)\\);console.log\\(j.result\\)}catch{console.log\\(d.slice\\(0,500\\)\\)}}\\)\")",
+      "Bash(claude -p --output-format json --max-turns 1)",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{try{const j=JSON.parse\\(d.slice\\(d.indexOf\\('{'\\)\\)\\);console.log\\('is_error:',j.is_error,'|',String\\(j.result\\).slice\\(0,120\\)\\)}catch{console.log\\('raw:',d.slice\\(0,200\\)\\)}}\\)\")",
+      "Bash(claude -p --output-format stream-json --verbose --setting-sources project --max-turns 1)",
+      "Bash(claude -p --output-format json --setting-sources project --settings \"C:/Users/AcademicEsu/AppData/Local/Temp/guard.json\" --max-turns 1)",
+      "Bash(claude -p --output-format json --setting-sources project --disallowedTools \"Read\\(**/.env\\)\" \"Read\\(**/.env.*\\)\" --max-turns 1)",
+      "Bash(mkdir -p /tmp/wdad-guard-test/.claude)",
+      "Read(//tmp/**)",
+      "Bash(claude -p --output-format json --setting-sources project --permission-mode acceptEdits --max-turns 6)",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{try{const j=JSON.parse\\(d.slice\\(d.indexOf\\('{'\\)\\)\\);console.log\\('is_error:',j.is_error,'\\\\n回答:',\\(j.result||''\\).slice\\(0,200\\)\\)}catch\\(e\\){console.log\\('parse fail:',d.slice\\(0,200\\)\\)}}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{try{const j=JSON.parse\\(d.slice\\(d.indexOf\\('{'\\)\\)\\);console.log\\('is_error:',j.is_error,'| 回答:',\\(j.result||''\\).slice\\(0,150\\)\\)}catch\\(e\\){console.log\\('parse fail:',d.slice\\(0,150\\)\\)}}\\)\")",
+      "Bash(git commit -q -m '开源准备：安全加固/基线对比/流式直播/继续调整/增量刷新/MCP Server/打包 *)"
     ]
+  },
+  "skillOverrides": {
+    "exploit-file-download": "off",
+    "exploit-lfi": "off",
+    "exploit-sqli": "off",
+    "exploit-xss": "off",
+    "pentest-report": "off",
+    "recon-dir-scan": "off",
+    "recon-fingerprint": "off",
+    "recon-port-scan": "off",
+    "recon-subdomain": "off",
+    "results-storage": "off"
   }
 }

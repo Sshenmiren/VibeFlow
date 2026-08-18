@@ -167,13 +167,22 @@ export interface TestRun {
   exitCode: number;
   outputTail: string; // 最后 ~40 行
   durationMs: number;
+  /** 与修改前基线对比：true=这次修改新弄挂的；false=本来就挂/现在通过；undefined=无基线可比 */
+  newFailure?: boolean;
 }
+
+/** 某个 git commit 下各检查命令的通过情况（基线） */
+export type CheckBaseline = { command: string; ok: boolean }[];
 
 export interface ChangeSet {
   id: string;
   nodeId: string;
   nodeTitle: string;
   instruction: string; // 用户的自然语言
+  /** 「继续调整」的追加指令历史 */
+  refinements?: string[];
+  /** claude 会话 id，支持在同一会话上继续调整（省 token） */
+  sessionId?: string;
   status: ChangeSetStatus;
   plan: {
     files: string[]; // 预计修改的文件
@@ -283,6 +292,7 @@ export type ServerEvent =
   | { type: 'files:changed'; projectId: string; files: string[]; staleNodeIds: string[] }
   | { type: 'timeline'; projectId: string; event: TimelineEvent }
   | { type: 'changeset'; projectId: string; changeSet: ChangeSet }
+  | { type: 'modify:log'; projectId: string; csId: string; line: string }
   | { type: 'views:stale'; projectId: string; staleNodeIds: string[] };
 
 export interface ImpactResult {

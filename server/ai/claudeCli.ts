@@ -1,7 +1,31 @@
 import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { AiSettings } from '../../shared/types.ts';
 import { addCost } from '../store.ts';
 import type { AiProvider, GenOptions, GenResult } from './provider.ts';
+
+/** 修改会话的安全护栏：禁止 AI 读取目标项目里的密钥文件 */
+const GUARD_DENY = [
+  'Read(./.env)', 'Read(./.env.*)', 'Read(**/.env)', 'Read(**/.env.*)',
+  'Read(**/credentials*)', 'Read(**/*.pem)', 'Read(**/*secret*)',
+];
+
+/**
+ * 把 deny 规则合并进目标项目的 .claude/settings.local.json ——
+ * 它属于 project 级配置，会被 --setting-sources project 自然加载。
+ * （不能用 --settings 标志：部分 API 代理会因此拒绝请求）
+ * 只做并集合并，绝不覆盖项目里已有的其他配置。
+ */
+function ensureGuardSettings(cwd: string): void {
+  const file = path.join(cwd, '.claude', 'settings.local.json');
+  let existing: { permissions?: { deny?: string[] } & Record<string, unknown> } & Record<string, unknown> = {};
+  try { existing = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* 没有或坏了 → 新建 */ }
+  const deny = [...new Set([...(existing.permissions?.deny ?? []), ...GUARD_DENY])];
+  const merged = { ...existing, permissions: { ...existing.permissions, deny } };
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(merged, null, 1));
+}
 
 interface CliResult {
   result?: string;
@@ -9,6 +33,32 @@ interface CliResult {
   total_cost_usd?: number;
   session_id?: string;
   subtype?: string;
+}
+
+/** stream-json 事件 → 用户可读进度行；不值得展示的事件返回 null */
+export function parseStreamEvent(event: unknown): string | null {
+  const e = event as { type?: string; message?: { content?: { type: string; name?: string; text?: string; input?: Record<string, unknown> }[] } };
+  if (e?.type !== 'assistant' || !Array.isArray(e.message?.content)) return null;
+  for (const item of e.message.content) {
+    if (item.type === 'tool_use' && item.name) {
+      const input = item.input ?? {};
+      const file = String(input.file_path ?? input.notebook_path ?? '');
+      const base = file ? file.split(/[\\/]/).pop() : '';
+      switch (item.name) {
+        case 'Read': return `🔍 阅读 ${base || '文件'}`;
+        case 'Edit': case 'MultiEdit': case 'NotebookEdit': return `✏️ 修改 ${base || '文件'}`;
+        case 'Write': return `✏️ 写入 ${base || '文件'}`;
+        case 'Grep': case 'Glob': return `🔎 搜索 ${String(input.pattern ?? '')}`.trimEnd();
+        case 'Bash': return '⚙️ 运行命令';
+        default: return `… ${item.name}`;
+      }
+    }
+    if (item.type === 'text') {
+      const text = (item.text ?? '').trim();
+      if (text) return `💬 ${text.slice(0, 60)}`;
+    }
+  }
+  return null;
 }
 
 /**
@@ -23,13 +73,17 @@ export class ClaudeCliProvider implements AiProvider {
   constructor(private settings: AiSettings) {}
 
   generate(opts: GenOptions): Promise<GenResult> {
-    const args = ['-p', '--output-format', 'json', '--setting-sources', 'project'];
+    const streaming = Boolean(opts.onProgress);
+    const args = streaming
+      ? ['-p', '--output-format', 'stream-json', '--verbose', '--setting-sources', 'project']
+      : ['-p', '--output-format', 'json', '--setting-sources', 'project'];
     const model = opts.model ?? this.settings.model;
     if (model) args.push('--model', model);
     if (opts.resumeSession) args.push('--resume', opts.resumeSession);
     if (opts.allowEdits) {
       args.push('--permission-mode', 'acceptEdits');
       args.push('--max-turns', String(opts.maxTurns ?? 40));
+      if (opts.cwd) ensureGuardSettings(opts.cwd);
     } else {
       args.push('--max-turns', String(opts.maxTurns ?? 1));
     }
@@ -47,23 +101,45 @@ export class ClaudeCliProvider implements AiProvider {
       });
       let stdout = '';
       let stderr = '';
+      let streamBuffer = '';
+      let streamResult: CliResult | null = null;
       const timer = setTimeout(() => {
         child.kill();
         resolve({ text: '', costUsd: 0, isError: true, errorMessage: `AI 调用超时（${timeoutMs / 1000}s）` });
       }, timeoutMs);
 
-      child.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });
+      child.stdout.on('data', (d: Buffer) => {
+        const chunk = d.toString();
+        if (!streaming) { stdout += chunk; return; }
+        // 流式：逐行解析 NDJSON，进度实时上报，result 事件即最终结果
+        streamBuffer += chunk;
+        const lines = streamBuffer.split('\n');
+        streamBuffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const event = JSON.parse(line) as CliResult & { type?: string };
+            if (event.type === 'result') streamResult = event;
+            else {
+              const progress = parseStreamEvent(event);
+              if (progress) opts.onProgress?.(progress);
+            }
+          } catch { /* 半截行，忽略 */ }
+        }
+      });
       child.stderr.on('data', (d: Buffer) => { stderr += d.toString(); });
       child.stdin.write(prompt);
       child.stdin.end();
 
       child.on('close', (code) => {
         clearTimeout(timer);
-        let parsed: CliResult | null = null;
-        try {
-          const jsonStart = stdout.indexOf('{');
-          parsed = JSON.parse(stdout.slice(jsonStart)) as CliResult;
-        } catch { /* 输出不是 JSON */ }
+        let parsed: CliResult | null = streamResult;
+        if (!parsed) {
+          try {
+            const jsonStart = stdout.indexOf('{');
+            parsed = JSON.parse(stdout.slice(jsonStart)) as CliResult;
+          } catch { /* 输出不是 JSON */ }
+        }
 
         const costUsd = parsed?.total_cost_usd ?? 0;
         if (costUsd > 0) addCost(costUsd);

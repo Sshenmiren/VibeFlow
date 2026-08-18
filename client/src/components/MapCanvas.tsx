@@ -6,7 +6,7 @@ import {
 } from '@xyflow/react';
 import type { Blueprint, ViewLayouts } from '../../../shared/types.ts';
 import { api } from '../api.ts';
-import { useApp } from '../store.ts';
+import { selectActiveDraftCs, useApp } from '../store.ts';
 import { layoutBizView, layoutTechGraph } from '../layout.ts';
 import { nodeTypes } from './MapNodes.tsx';
 import { ChangeSetProgress } from './ChangeSetProgress.tsx';
@@ -29,7 +29,7 @@ function CanvasInner() {
   const [storesLoaded, setStoresLoaded] = useState(0);
   const [selectedDraftEdgeId, setSelectedDraftEdgeId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [dismissedCsId, setDismissedCsId] = useState<string | null>(null);
+  const { dismissedDraftCsId, dismissDraftCs } = useApp();
   const sentViewRef = useRef<Record<string, string>>({}); // csId -> viewKind
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastViewRef = useRef<string>('');
@@ -193,7 +193,7 @@ function CanvasInner() {
 
   // ---------- 发给 AI ----------
   const draftCount = isBizView ? nodes.filter(n => n.type === 'draft').length : 0;
-  const activeDraftCs = changesets.find(c => c.nodeId === 'blueprint' && c.id !== dismissedCsId && !['accepted', 'rolledback'].includes(c.status));
+  const activeDraftCs = selectActiveDraftCs({ changesets, dismissedDraftCsId });
 
   const sendDrafts = async () => {
     if (!projectId) return;
@@ -204,7 +204,8 @@ function CanvasInner() {
       const cs = await api.sendBlueprint(projectId, activeView);
       updateChangeSet(cs);
       sentViewRef.current[cs.id] = activeView;
-      setDismissedCsId(null);
+      dismissDraftCs(null);
+      selectNode(null); // 让出右栏给构想进度面板
       showToast('构想已打包，确认计划后点「开始执行」');
     } catch (err) {
       showToast((err as Error).message, 'error');
@@ -231,8 +232,11 @@ function CanvasInner() {
   const isAnalyzing = meta?.status === 'analyzing' || analysisProgress != null;
   const noViews = !views && activeView !== 'tech';
   const emptyProject = meta?.status === 'empty';
+  // 构想进度占右栏（节点详情优先）；不悬浮盖图
+  const showDraftPanel = activeDraftCs != null && selectedNodeId == null;
 
   return (
+    <>
     <div className="canvas-area paper-bg">
       <ReactFlow
         nodes={nodes}
@@ -295,22 +299,6 @@ function CanvasInner() {
         </div>
       )}
 
-      {/* 构想执行进度（浮动卡片） */}
-      {activeDraftCs && (
-        <div style={{
-          position: 'absolute', top: 58, left: 12, zIndex: 10, width: 360, maxHeight: 'calc(100% - 80px)',
-          overflowY: 'auto', background: 'var(--card)', border: '1.5px solid var(--ink)', borderRadius: 8,
-          boxShadow: 'var(--shadow-lg)', padding: 14,
-        }} className="fade-in">
-          <h3 style={{ margin: 0, fontSize: 14 }}>💡 {activeDraftCs.nodeTitle}</h3>
-          <details style={{ fontSize: 12, margin: '6px 0' }}>
-            <summary style={{ cursor: 'pointer', color: 'var(--ink-2)' }}>发给 AI 的完整说明</summary>
-            <pre style={{ whiteSpace: 'pre-wrap', fontSize: 11, background: 'var(--paper-2)', padding: 8, borderRadius: 4, maxHeight: 160, overflowY: 'auto' }}>{activeDraftCs.instruction}</pre>
-          </details>
-          <ChangeSetProgress projectId={projectId!} cs={activeDraftCs} onReset={() => setDismissedCsId(activeDraftCs.id)} />
-        </div>
-      )}
-
       {isAnalyzing && (
         <div className="empty-state" style={{ background: 'rgba(244,238,221,0.88)' }}>
           <div className="big">正在阅读你的项目…</div>
@@ -345,6 +333,20 @@ function CanvasInner() {
         </div>
       )}
     </div>
+
+    {showDraftPanel && activeDraftCs && (
+      <aside className="detail-panel fade-in" aria-label="构想执行进度">
+        <div style={{ padding: 14 }}>
+          <h3 style={{ margin: 0, fontSize: 14 }}>💡 {activeDraftCs.nodeTitle}</h3>
+          <details style={{ fontSize: 12, margin: '6px 0' }}>
+            <summary style={{ cursor: 'pointer', color: 'var(--ink-2)' }}>发给 AI 的完整说明</summary>
+            <pre style={{ whiteSpace: 'pre-wrap', fontSize: 11, background: 'var(--paper-2)', padding: 8, borderRadius: 4, maxHeight: 160, overflowY: 'auto' }}>{activeDraftCs.instruction}</pre>
+          </details>
+          <ChangeSetProgress projectId={projectId!} cs={activeDraftCs} onReset={() => dismissDraftCs(activeDraftCs.id)} />
+        </div>
+      </aside>
+    )}
+    </>
   );
 }
 

@@ -16,6 +16,8 @@ export interface GenOptions {
   resumeSession?: string;
   maxTurns?: number;
   timeoutMs?: number;
+  /** 实时进度回调（设置后走 stream-json，AI 每个动作都会上报一行） */
+  onProgress?: (line: string) => void;
 }
 
 export interface GenResult {

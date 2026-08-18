@@ -7,15 +7,17 @@ import { bizNodesTouchingFiles, buildTechGraph, computeImpact } from './graph.ts
 import { askNode, generateExplanations, getOrGenerateExplanation, factsHashFor } from './explain.ts';
 import {
   acceptChangeSet, createChangeSet, createDraftChangeSet, ensureGitRepo, executeChangeSet,
-  isWorkingTreeClean, rollbackChangeSet, snapshotCommit,
+  isWorkingTreeClean, refineChangeSet, rollbackChangeSet, snapshotCommit,
 } from './modify.ts';
 import type { Blueprint, ViewLayouts } from '../shared/types.ts';
 import { addToRegistry, getSettings, listRegistry, ProjectStore, projectIdFor, saveSettings } from './store.ts';
-import { generateViews } from './views.ts';
+import { generateViews, refreshStaleViews } from './views.ts';
 import { emit, subscribe } from './sse.ts';
 import { watchProject, type ProjectWatcher } from './watcher.ts';
 
 const PORT = Number(process.env.PORT ?? 5177);
+// 默认只监听本机回环——这是操作你源码的工具，绝不能暴露到局域网
+const HOST = process.env.HOST ?? '127.0.0.1';
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 // ---------- 项目会话管理 ----------
@@ -63,6 +65,7 @@ async function handleFileChanges(id: string, session: ProjectSession, relPaths: 
     if (changed.length === 0) return;
     const views = session.store.getViews();
     const staleNodeIds = bizNodesTouchingFiles(views, changed);
+    session.store.addPendingStale(changed, staleNodeIds);
     const event = session.store.addTimelineEvent({
       kind: 'files-changed',
       title: `检测到 ${changed.length} 个文件变化`,
@@ -224,6 +227,28 @@ app.post('/api/projects/:id/views/generate', wrap(async (req, res) => {
   }
 }));
 
+// 过期状态（服务端持久化，刷新页面不丢）
+app.get('/api/projects/:id/stale', wrap((req, res) => {
+  const session = getSession(p(req, 'id'));
+  res.json(session.store.getPendingStale());
+}));
+
+// 增量刷新：只重新翻译受变化影响的视图
+app.post('/api/projects/:id/views/refresh', wrap(async (req, res) => {
+  const session = getSession(p(req, 'id'));
+  if (session.generatingViews) throw new HttpError(409, '正在生成中，请稍候');
+  const meta = session.store.getMeta();
+  if (!meta) throw new HttpError(404, '项目未导入');
+  session.generatingViews = true;
+  try {
+    const views = await refreshStaleViews(session.store, meta);
+    emit({ type: 'timeline', projectId: p(req, 'id'), event: session.store.getTimeline()[0] });
+    res.json(views);
+  } finally {
+    session.generatingViews = false;
+  }
+}));
+
 // 解释层
 app.get('/api/projects/:id/nodes/:nodeId/explanation', wrap(async (req, res) => {
   const session = getSession(p(req, 'id'));
@@ -344,26 +369,56 @@ app.post('/api/projects/:id/changesets/:csId/execute', wrap(async (req, res) => 
   // 长任务：立即返回，进度走 SSE；执行期间暂停 watcher 防止自触发
   res.status(202).json({ started: true });
   session.watcher?.pause();
+  const csId = p(req, 'csId');
   try {
-    const cs = await executeChangeSet(session.store, p(req, 'csId'), (updated) => {
+    const cs = await executeChangeSet(session.store, csId, (updated) => {
       emit({ type: 'changeset', projectId: id, changeSet: { ...updated } });
+    }, (line) => {
+      emit({ type: 'modify:log', projectId: id, csId, line });
     });
-    // 磁盘状态已变（尚未 commit）→ 增量更新地图
-    if (cs.changedFiles.length > 0) {
-      const meta = session.store.getMeta();
-      if (meta) {
-        const { changed } = await analyzeIncremental(session.store, meta, cs.changedFiles);
-        if (changed.length) {
-          emit({ type: 'files:changed', projectId: id, files: changed, staleNodeIds: bizNodesTouchingFiles(session.store.getViews(), changed) });
-        }
-      }
-    }
+    await reanalyzeChanged(session, id, cs.changedFiles);
   } catch (err) {
     console.error('执行修改失败：', err);
   } finally {
     session.watcher?.resume();
   }
 }));
+
+// 对话式继续调整：看过 diff 后在同一 AI 会话上追加要求
+app.post('/api/projects/:id/changesets/:csId/refine', wrap(async (req, res) => {
+  const id = p(req, 'id');
+  const session = getSession(id);
+  const instruction = String((req.body as { instruction?: string }).instruction ?? '').trim();
+  if (!instruction) throw new HttpError(400, '请描述要怎么调整');
+  res.status(202).json({ started: true });
+  session.watcher?.pause();
+  const csId = p(req, 'csId');
+  try {
+    const cs = await refineChangeSet(session.store, csId, instruction, (updated) => {
+      emit({ type: 'changeset', projectId: id, changeSet: { ...updated } });
+    }, (line) => {
+      emit({ type: 'modify:log', projectId: id, csId, line });
+    });
+    await reanalyzeChanged(session, id, cs.changedFiles);
+  } catch (err) {
+    console.error('继续调整失败：', err);
+  } finally {
+    session.watcher?.resume();
+  }
+}));
+
+/** 修改落盘后（尚未 commit）增量更新地图 */
+async function reanalyzeChanged(session: ProjectSession, id: string, files: string[]) {
+  if (files.length === 0) return;
+  const meta = session.store.getMeta();
+  if (!meta) return;
+  const { changed } = await analyzeIncremental(session.store, meta, files);
+  if (changed.length) {
+    const staleNodeIds = bizNodesTouchingFiles(session.store.getViews(), changed);
+    session.store.addPendingStale(changed, staleNodeIds);
+    emit({ type: 'files:changed', projectId: id, files: changed, staleNodeIds });
+  }
+}
 
 app.post('/api/projects/:id/changesets/:csId/accept', wrap(async (req, res) => {
   const session = getSession(p(req, 'id'));
@@ -430,6 +485,6 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(status).json({ error: err.message });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   console.log(`whatdidaido server → http://localhost:${PORT}`);
 });
