@@ -32,8 +32,8 @@ export function Landing({ onOpen }: { onOpen: (id: string) => void }) {
           📜 whatdidaido
         </h1>
         <p style={{ fontSize: 15, color: 'var(--ink-2)', marginTop: 6 }}>
-          把你的软件项目变成一张<strong style={{ color: 'var(--cinnabar)' }}>看得懂的活地图</strong>。<br />
-          AI（比如 Claude Code）改了什么、项目怎么运作、想改哪里——都在图上。
+          把你的软件项目转换成<strong style={{ color: 'var(--cinnabar)' }}>可视化的项目视图</strong>。<br />
+          AI（比如 Claude Code）改了什么、项目怎么运作、想改哪里——一目了然。
         </p>
 
         <div style={{ background: 'var(--card)', border: '1.5px solid var(--ink)', borderRadius: 10, padding: 20, boxShadow: 'var(--shadow-lg)', marginTop: 18 }}>
@@ -45,13 +45,13 @@ export function Landing({ onOpen }: { onOpen: (id: string) => void }) {
               onChange={e => setPath(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') void importProject(path); }} />
             <button className="primary" onClick={() => void importProject(path)} disabled={busy || !path.trim()}>
-              {busy ? <><span className="spin" /> 导入中…</> : '打开地图'}
+              {busy ? <><span className="spin" /> 导入中…</> : '打开项目'}
             </button>
           </div>
           {error && <p style={{ color: 'var(--danger)', fontSize: 12, marginBottom: 0 }}>{error}</p>}
           <p style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 0 }}>
-            分析在你自己的电脑上完成；如果文件夹还不是 Git 仓库会自动初始化一个（用于安全回滚）。<br />
-            <strong>从零开始？</strong>指向一个空文件夹，然后开始写代码，地图会实时生长。
+            分析在本机完成；如果文件夹还不是 Git 仓库会自动初始化一个（用于安全回滚）。<br />
+            <strong>从零开始？</strong>指向一个空文件夹，然后开始写代码，项目视图会实时更新。
           </p>
         </div>
 

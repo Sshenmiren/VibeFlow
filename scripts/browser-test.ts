@@ -24,7 +24,7 @@ await step('01-landing');
 
 // 2. 导入项目
 await page.fill('#path-input', 'C:/Users/AcademicEsu/Desktop/vibecode/LLMengine');
-await page.click('button:has-text("打开地图")');
+await page.click('button:has-text("打开项目")');
 await page.waitForSelector('.react-flow__node', { timeout: 30_000 });
 await page.waitForTimeout(1200); // 等 fitView 动画
 await step('02-journey-view');
@@ -45,8 +45,8 @@ await page.click('.detail-panel button:has-text("源码")');
 await page.waitForSelector('.detail-panel .mono >> text=backend', { timeout: 15_000 });
 await step('05-source');
 
-// 6. 切换视图：功能地图
-await page.click('.view-tab:has-text("功能地图")');
+// 6. 切换视图：功能总览
+await page.click('.view-tab:has-text("功能总览")');
 await page.waitForTimeout(1000);
 await step('06-features');
 
@@ -66,7 +66,7 @@ const timelineText = await page.textContent('.timeline-strip');
 console.log('时间线首条：', timelineText?.slice(0, 80));
 
 // 10. 修改历史标签
-await page.click('.view-tab:has-text("用户旅程")');
+await page.click('.view-tab:has-text("用户流程")');
 await page.click('.react-flow__node:has-text("进入主菜单")');
 await page.waitForSelector('.detail-panel', { timeout: 5000 });
 await page.click('.detail-panel button:has-text("历史")');

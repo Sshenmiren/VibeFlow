@@ -42,8 +42,8 @@ export async function generateViews(store: ProjectStore, meta: ProjectMeta): Pro
   store.clearPendingStale();
   store.addTimelineEvent({
     kind: 'views-generated',
-    title: '生成了项目理解视图',
-    detail: dropped > 0 ? `${views.reduce((n, v) => n + v.nodes.length, 0)} 个环节（剔除 ${dropped} 个无法对应源码的节点）` : `${views.reduce((n, v) => n + v.nodes.length, 0)} 个环节`,
+    title: '生成项目视图完成',
+    detail: dropped > 0 ? `${views.reduce((n, v) => n + v.nodes.length, 0)} 个节点（已剔除 ${dropped} 个无法对应源码的节点）` : `${views.reduce((n, v) => n + v.nodes.length, 0)} 个节点`,
     costUsd: result.costUsd,
   });
   return businessViews;
@@ -115,7 +115,7 @@ function symbolLines(fact: FileFact, symbol?: string): { startLine?: number; end
 
 export async function refreshStaleViews(store: ProjectStore, meta: ProjectMeta): Promise<BusinessViews> {
   const existing = store.getViews();
-  if (!existing) throw new Error('还没有生成过视图，请先生成项目地图');
+  if (!existing) throw new Error('还没有生成过视图，请先生成项目视图');
   const { files: staleFiles, nodeIds: staleNodeIds } = store.getPendingStale();
   if (staleFiles.length === 0 && staleNodeIds.length === 0) return existing;
 
@@ -183,8 +183,8 @@ ${deletedFiles.length ? `\n== 已删除的文件 ==\n${deletedFiles.join('\n')}`
   store.clearPendingStale();
   store.addTimelineEvent({
     kind: 'views-generated',
-    title: `增量刷新了 ${targets.length} 个视图`,
-    detail: `基于 ${staleFiles.length} 个变化文件`,
+    title: `增量刷新 ${targets.length} 个视图完成`,
+    detail: `基于 ${staleFiles.length} 个变更文件`,
     costUsd: totalCost,
   });
   return updated;
@@ -248,8 +248,8 @@ ${digest}
 {
   "projectSummary": "这个项目到底做了什么（2-4句，给完全不懂编程的人看）",
   "views": [
-    { "kind": "journey", "title": "用户旅程", "nodes": [...], "edges": [...] },
-    { "kind": "features", "title": "功能地图", "nodes": [...], "edges": [...] },
+    { "kind": "journey", "title": "用户流程", "nodes": [...], "edges": [...] },
+    { "kind": "features", "title": "功能总览", "nodes": [...], "edges": [...] },
     { "kind": "pageflow", "title": "页面流程", "nodes": [...], "edges": [...] },
     { "kind": "dataflow", "title": "数据流", "nodes": [...], "edges": [...] }
   ]
@@ -261,8 +261,8 @@ ${digest}
 每个 edge：{ "source": "节点id", "target": "节点id", "label": "≤10字的动作说明，如'点击开始'" }
 
 要求：
-- journey：普通用户从打开产品到完成核心任务的旅程（6-12个节点，按时间顺序连线）
-- features：业务能力地图（按 group 分组，如"游戏对局""角色管理"；节点间少连线或不连线）
+- journey：普通用户从打开产品到完成核心任务的完整步骤（6-12个节点，按时间顺序连线）
+- features：产品功能总览（按 group 分组，如"游戏对局""角色管理"；节点间少连线或不连线）
 - pageflow：界面/页面之间的跳转关系（点什么按钮到哪个界面）
 - dataflow：数据从哪来、经过哪、存到哪（如 用户输入→前端→API→引擎→存档文件）
 - 所有文字面向没有编程基础的人：不许出现"组件""路由""中间件""hook""API端点"这类术语，用"页面""按钮""服务器""保存"这类日常词

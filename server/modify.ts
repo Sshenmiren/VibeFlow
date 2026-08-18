@@ -101,7 +101,7 @@ export function createChangeSet(store: ProjectStore, nodeId: string, instruction
 export function createDraftChangeSet(store: ProjectStore, blueprint: Blueprint, viewKind: string): ChangeSet {
   const blocks = blueprint.blocks.filter(b => b.view === viewKind);
   const cons = blueprint.connections.filter(c => c.view === viewKind);
-  if (blocks.length === 0) throw new Error('这个视图上还没有画新构想——先点「＋ 突发奇想」加一个模块');
+  if (blocks.length === 0) throw new Error('当前视图上还没有新建模块——先点「＋ 新建模块」添加一个');
 
   const views = store.getViews();
   const view = views?.views.find(v => v.kind === viewKind);
@@ -116,7 +116,7 @@ export function createDraftChangeSet(store: ProjectStore, blueprint: Blueprint, 
   }
 
   const lines: string[] = [
-    `用户在「${view?.title ?? viewKind}」视图上勾画了一个新构想：新画的模块和每条连线的含义都是用户亲手写的，其中【现有环节】是项目里已经存在的真实功能。请把这个构想在项目里实现出来：`,
+    `用户在「${view?.title ?? viewKind}」视图上添加了新模块：新建的模块和每条连线的含义都是用户填写的，其中【现有节点】是项目里已经存在的真实功能。请在项目中实现这些新模块：`,
     '', '== 新模块（待实现） ==',
   ];
   blocks.forEach((b, i) => {
@@ -125,12 +125,12 @@ export function createDraftChangeSet(store: ProjectStore, blueprint: Blueprint, 
   if (cons.length > 0) {
     lines.push('', '== 连线（流向/触发关系） ==');
     for (const c of cons) {
-      const mark = (id: string) => realById.has(id) ? `【现有环节】${nameOf(id)}` : `「${nameOf(id)}」`;
+      const mark = (id: string) => realById.has(id) ? `【现有节点】${nameOf(id)}` : `「${nameOf(id)}」`;
       lines.push(`- ${mark(c.source)} → ${mark(c.target)}：${c.label || '（用户没写这条线的含义）'}`);
     }
   }
   if (involvedReal.size > 0) {
-    lines.push('', '== 涉及的现有环节（真实源码位置） ==');
+    lines.push('', '== 涉及的现有节点（真实源码位置） ==');
     for (const id of involvedReal) {
       const n = realById.get(id)!;
       lines.push(`- ${n.title}：${n.summary}；源码 → ${n.sourceRefs.map(r => r.file + (r.symbol ? `#${r.symbol}` : '')).join(', ')}`);
@@ -142,13 +142,13 @@ export function createDraftChangeSet(store: ProjectStore, blueprint: Blueprint, 
   const cs: ChangeSet = {
     id: crypto.randomUUID().slice(0, 8),
     nodeId: 'blueprint',
-    nodeTitle: `新构想（${view?.title ?? viewKind}）`,
+    nodeTitle: `新模块（${view?.title ?? viewKind}）`,
     instruction: lines.join('\n'),
     status: 'planned',
     plan: {
       files,
       affectedNodeIds: [...involvedReal],
-      note: `将实现 ${blocks.length} 个新模块、${cons.length} 条连接${involvedReal.size ? `，并接入 ${involvedReal.size} 个现有环节` : ''}。完成后展示完整 diff 供你确认。`,
+      note: `将实现 ${blocks.length} 个新模块、${cons.length} 条连接${involvedReal.size ? `，并接入 ${involvedReal.size} 个现有节点` : ''}。完成后展示完整 diff 供你确认。`,
     },
     diff: null,
     changedFiles: [],

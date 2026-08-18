@@ -110,7 +110,7 @@ function CanvasInner() {
     const isDraft = (id: string | null) => !!id && id.startsWith('draft_');
     if (!conn.source || !conn.target) return;
     if (!isDraft(conn.source) && !isDraft(conn.target)) {
-      showToast('现有环节之间的关系来自代码分析——连线时至少要有一端是💡新构想');
+      showToast('现有节点之间的关系来自代码分析——连线时至少有一端必须是新建模块');
       return;
     }
     const c = { id: freshDraftId('dcon'), source: conn.source, target: conn.target, label: '', view: activeView };
@@ -205,8 +205,8 @@ function CanvasInner() {
       updateChangeSet(cs);
       sentViewRef.current[cs.id] = activeView;
       dismissDraftCs(null);
-      selectNode(null); // 让出右栏给构想进度面板
-      showToast('构想已打包，确认计划后点「开始执行」');
+      selectNode(null); // 让出右栏给新模块进度面板
+      showToast('新模块已提交，确认计划后点「开始执行」');
     } catch (err) {
       showToast((err as Error).message, 'error');
     } finally { setSending(false); }
@@ -223,7 +223,7 @@ function CanvasInner() {
         setNodes(nds => nds.filter(n => n.type !== 'draft'));
         setEdges(eds => eds.filter(e => !e.id.startsWith('dcon_')));
         scheduleSaveBlueprint();
-        showToast('构想已实现！代码变了，记得点「重新生成地图」让地图跟上');
+        showToast('新模块已实现！代码已变更，点击「重新生成所有视图」更新项目视图');
       }
     }
   }, [changesets, scheduleSaveBlueprint, showToast]);
@@ -263,14 +263,14 @@ function CanvasInner() {
         <MiniMap pannable zoomable nodeColor="#d8cdb2" maskColor="rgba(244, 238, 221, 0.7)" />
       </ReactFlow>
 
-      {/* 突发奇想工具条（业务视图专属） */}
+      {/* 新建模块工具条（业务视图专属） */}
       {isBizView && !isAnalyzing && (
         <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 10, alignItems: 'center' }}>
-          <button className="primary" onClick={addDraft} title="在这张图上画一个还不存在的新模块">💡 突发奇想</button>
+          <button className="primary" onClick={addDraft} title="在当前视图上添加一个新模块">＋ 新建模块</button>
           {draftCount > 0 && !activeDraftCs && (
             <button className="primary" style={{ background: 'var(--pine)', borderColor: 'var(--pine)' }}
               onClick={() => void sendDrafts()} disabled={sending}>
-              {sending ? <><span className="spin" /> 打包中…</> : `✔ 把 ${draftCount} 个构想交给 AI 实现`}
+              {sending ? <><span className="spin" /> 提交中…</> : `✔ 让 AI 实现这 ${draftCount} 个模块`}
             </button>
           )}
         </div>
@@ -282,26 +282,26 @@ function CanvasInner() {
           position: 'absolute', top: 58, left: 12, zIndex: 11, background: 'var(--card)',
           border: '1.5px solid var(--ink)', borderRadius: 8, boxShadow: 'var(--shadow-lg)', padding: 12, width: 320,
         }} className="fade-in">
-          <div className="section-label" style={{ marginTop: 0 }}>这条线是什么意思？</div>
+          <div className="section-label" style={{ marginTop: 0 }}>这条连线表示什么？</div>
           <input
             autoFocus
             style={{ width: '100%' }}
-            placeholder="比如：点击后触发 / 把结果传过去…"
+            placeholder="例如：点击后触发 / 把结果传给对方…"
             value={typeof selectedDraftEdge.label === 'string' ? selectedDraftEdge.label : ''}
             onChange={e => setDraftEdgeLabel(selectedDraftEdge.id, e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setSelectedDraftEdgeId(null); }}
             aria-label="连线含义"
           />
           <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-            <button onClick={() => setSelectedDraftEdgeId(null)}>好了</button>
-            <button className="ghost" style={{ color: 'var(--danger)' }} onClick={() => deleteDraftEdge(selectedDraftEdge.id)}>删除这条线</button>
+            <button onClick={() => setSelectedDraftEdgeId(null)}>确认</button>
+            <button className="ghost" style={{ color: 'var(--danger)' }} onClick={() => deleteDraftEdge(selectedDraftEdge.id)}>删除连线</button>
           </div>
         </div>
       )}
 
       {isAnalyzing && (
         <div className="empty-state" style={{ background: 'rgba(244,238,221,0.88)' }}>
-          <div className="big">正在阅读你的项目…</div>
+          <div className="big">正在分析项目…</div>
           {analysisProgress && analysisProgress.total > 0 && (
             <>
               <div style={{ width: 260 }} className="progress-bar">
@@ -317,27 +317,27 @@ function CanvasInner() {
 
       {!isAnalyzing && emptyProject && draftCount === 0 && (
         <div className="empty-state" style={{ pointerEvents: 'none' }}>
-          <div className="big">这还是一片空白的地图</div>
-          <p>开始写代码（或者让 Claude Code 开始干活），文件一出现，地图就会自己长出来。<br />
-            也可以点左上角「💡 突发奇想」，直接画出你想要的东西让 AI 实现。</p>
+          <div className="big">暂无文件</div>
+          <p>开始写代码（或让 Claude Code 开始生成代码），文件出现后视图将自动更新。<br />
+            也可以点左上角「＋ 新建模块」，添加模块描述后让 AI 实现。</p>
         </div>
       )}
 
       {!isAnalyzing && !emptyProject && noViews && draftCount === 0 && (
         <div className="empty-state" style={{ background: 'rgba(244,238,221,0.82)' }}>
-          <div className="big">项目已读完，等你一声令下</div>
-          <p>让 AI 把 {meta?.fileCount ?? 0} 个文件翻译成普通人能看懂的地图。</p>
+          <div className="big">分析完成，点击生成项目视图</div>
+          <p>让 AI 将 {meta?.fileCount ?? 0} 个文件转换为可视化的项目视图。</p>
           <button className="primary" onClick={() => void generateViews()} disabled={generatingViews}>
-            {generatingViews ? <><span className="spin" /> 正在绘制地图（约 1-2 分钟）…</> : '🗺️ 生成项目地图'}
+            {generatingViews ? <><span className="spin" /> 正在生成视图（约 1-2 分钟）…</> : '🗺️ 生成项目视图'}
           </button>
         </div>
       )}
     </div>
 
     {showDraftPanel && activeDraftCs && (
-      <aside className="detail-panel fade-in" aria-label="构想执行进度">
+      <aside className="detail-panel fade-in" aria-label="新模块执行进度">
         <div style={{ padding: 14 }}>
-          <h3 style={{ margin: 0, fontSize: 14 }}>💡 {activeDraftCs.nodeTitle}</h3>
+          <h3 style={{ margin: 0, fontSize: 14 }}>＋ {activeDraftCs.nodeTitle}</h3>
           <details style={{ fontSize: 12, margin: '6px 0' }}>
             <summary style={{ cursor: 'pointer', color: 'var(--ink-2)' }}>发给 AI 的完整说明</summary>
             <pre style={{ whiteSpace: 'pre-wrap', fontSize: 11, background: 'var(--paper-2)', padding: 8, borderRadius: 4, maxHeight: 160, overflowY: 'auto' }}>{activeDraftCs.instruction}</pre>

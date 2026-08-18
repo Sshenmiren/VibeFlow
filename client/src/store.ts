@@ -163,7 +163,7 @@ export const useApp = create<AppState>((set, get) => ({
       const views = await api.refreshViews(id);
       set({ views, staleNodeIds: new Set() });
       void get().refreshSettings();
-      get().showToast('过期部分已刷新 ✓');
+      get().showToast('视图刷新完成 ✓');
     } catch (err) {
       get().showToast((err as Error).message, 'error');
     } finally {

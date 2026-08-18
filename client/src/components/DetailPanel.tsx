@@ -29,11 +29,11 @@ export function DetailPanel() {
   const isStale = staleNodeIds.has(selectedNodeId);
 
   const tabs: { key: Tab; label: string }[] = isTechNode
-    ? [{ key: 'source', label: '源码' }, { key: 'ask', label: '问问它' }, { key: 'impact', label: '影响范围' }]
+    ? [{ key: 'source', label: '源码' }, { key: 'ask', label: '提问' }, { key: 'impact', label: '影响范围' }]
     : [
-        { key: 'explain', label: '这是什么' },
-        { key: 'ask', label: '问问它' },
-        { key: 'modify', label: '修改它' },
+        { key: 'explain', label: '说明' },
+        { key: 'ask', label: '提问' },
+        { key: 'modify', label: '修改' },
         { key: 'impact', label: '影响范围' },
         { key: 'source', label: '源码' },
         { key: 'history', label: `历史${nodeChangesets.length ? ` ${nodeChangesets.length}` : ''}` },
@@ -52,7 +52,7 @@ export function DetailPanel() {
         {bizNode && <p style={{ margin: '4px 0 0', color: 'var(--ink-2)', fontSize: 13 }}>{bizNode.summary}</p>}
         {isStale && (
           <div style={{ background: 'var(--amber-soft)', border: '1px solid var(--amber)', borderRadius: 6, padding: '6px 10px', fontSize: 12, marginTop: 8 }}>
-            ⚠️ 相关代码刚发生变化，下面的解释可能过时——点开「这是什么」会自动重新生成。
+            ⚠️ 相关代码已发生变化，当前说明可能已过时——点击「说明」标签会自动重新生成。
           </div>
         )}
         <nav style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 12, borderBottom: '1px solid var(--line)', paddingBottom: 8 }} aria-label="详情标签">
@@ -77,7 +77,7 @@ export function DetailPanel() {
   );
 }
 
-// ---------- 这是什么 ----------
+// ---------- 说明 ----------
 
 function ExplainTab({ projectId, node }: { projectId: string; node: BizNode }) {
   const [explanation, setExplanation] = useState<NodeExplanation | null>(null);
@@ -96,7 +96,7 @@ function ExplainTab({ projectId, node }: { projectId: string; node: BizNode }) {
 
   useEffect(() => { setExplanation(null); load(); }, [load]);
 
-  if (loading) return <p><span className="spin" /> AI 正在读这段代码并翻译成人话…（首次约 30-60 秒，之后有缓存）</p>;
+  if (loading) return <p><span className="spin" /> AI 正在分析代码并生成说明…（首次约 30-60 秒，之后有缓存）</p>;
   if (error) return <p style={{ color: 'var(--danger)' }}>解释生成失败：{error} <button onClick={load}>重试</button></p>;
   if (!explanation) return null;
 
@@ -128,7 +128,7 @@ function ExplainTab({ projectId, node }: { projectId: string; node: BizNode }) {
   );
 }
 
-// ---------- 问问它 ----------
+// ---------- 提问 ----------
 
 function AskTab({ projectId, nodeId }: { projectId: string; nodeId: string }) {
   const [messages, setMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([]);
@@ -164,7 +164,7 @@ function AskTab({ projectId, nodeId }: { projectId: string; nodeId: string }) {
       <div style={{ flex: 1, minHeight: 120 }}>
         {messages.length === 0 && (
           <p style={{ color: 'var(--ink-3)', fontSize: 12 }}>
-            只回答与这个环节相关的问题，比如：<br />「这里如果出错会怎样？」「这个功能的数据存在哪？」
+            只回答与该节点相关的问题，例如：<br />「这里如果出错会怎样？」「这个功能的数据存在哪？」
           </p>
         )}
         {messages.map((m, i) => (
@@ -180,7 +180,7 @@ function AskTab({ projectId, nodeId }: { projectId: string; nodeId: string }) {
         <div ref={endRef} />
       </div>
       <div style={{ display: 'flex', gap: 6 }}>
-        <input style={{ flex: 1 }} value={input} placeholder="问一个关于这个环节的问题…"
+        <input style={{ flex: 1 }} value={input} placeholder="输入关于该节点的问题…"
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') void send(); }}
           aria-label="提问输入框" />
@@ -190,7 +190,7 @@ function AskTab({ projectId, nodeId }: { projectId: string; nodeId: string }) {
   );
 }
 
-// ---------- 修改它 ----------
+// ---------- 修改 ----------
 
 function ModifyTab({ projectId, node }: { projectId: string; node: BizNode }) {
   const { changesets, updateChangeSet, showToast } = useApp();
@@ -220,7 +220,7 @@ function ModifyTab({ projectId, node }: { projectId: string; node: BizNode }) {
       <div>
         <p style={{ fontSize: 13, color: 'var(--ink-2)' }}>用平常说话的方式描述你想要的改变，AI 会定位代码、给出计划和改动，测试通过后你再决定要不要。</p>
         <textarea rows={4} style={{ width: '100%' }} value={instruction}
-          placeholder={`例如：把「${node.title}」这个环节改成…`}
+          placeholder={`例如：把「${node.title}」改成…`}
           onChange={e => setInstruction(e.target.value)}
           aria-label="修改要求" />
         <button className="primary" style={{ marginTop: 8 }} onClick={() => void createPlan()}
@@ -257,12 +257,12 @@ function ImpactTab({ projectId, nodeId }: { projectId: string; nodeId: string })
 
   return (
     <div className="fade-in" style={{ fontSize: 13 }}>
-      <div className="section-label">这个环节直接用到的文件</div>
+      <div className="section-label">该节点直接使用的文件</div>
       {impact.files.map(f => <span key={f} className="chip mono">{f}</span>)}
       <div className="section-label">改了它可能波及的文件（{impact.dependents.length}）</div>
       {impact.dependents.length === 0 ? <p style={{ color: 'var(--ink-3)', margin: 0 }}>没有其他文件依赖它，影响范围很小。</p>
         : impact.dependents.map(f => <span key={f} className="chip mono">{f}</span>)}
-      <div className="section-label">同时会受影响的环节（{impact.relatedBizNodes.length}）</div>
+      <div className="section-label">同时受影响的节点（{impact.relatedBizNodes.length}）</div>
       {impact.relatedBizNodes.map(n => (
         <button key={n.id} className="ghost" style={{ display: 'block', padding: '3px 8px', fontSize: 12 }}
           onClick={() => selectNode(n.id)}>
@@ -333,7 +333,7 @@ function SourceTab({ projectId, refs, devMode }: { projectId: string; refs: Sour
 // ---------- 历史 ----------
 
 function HistoryTab({ changesets }: { changesets: ChangeSet[] }) {
-  if (changesets.length === 0) return <p style={{ color: 'var(--ink-3)' }}>这个环节还没有被 AI 修改过。</p>;
+  if (changesets.length === 0) return <p style={{ color: 'var(--ink-3)' }}>该节点还没有被 AI 修改过。</p>;
   const statusLabel: Record<string, string> = {
     planned: '待执行', executing: '修改中', diffed: '待验收', testing: '测试中',
     tested: '待验收', accepted: '✓ 已接受', rolledback: '↩ 已回滚', failed: '✗ 失败', planning: '计划中',

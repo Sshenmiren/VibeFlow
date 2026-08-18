@@ -67,7 +67,8 @@
       "Bash(claude -p --output-format json --setting-sources project --permission-mode acceptEdits --max-turns 6)",
       "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{try{const j=JSON.parse\\(d.slice\\(d.indexOf\\('{'\\)\\)\\);console.log\\('is_error:',j.is_error,'\\\\n回答:',\\(j.result||''\\).slice\\(0,200\\)\\)}catch\\(e\\){console.log\\('parse fail:',d.slice\\(0,200\\)\\)}}\\)\")",
       "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{try{const j=JSON.parse\\(d.slice\\(d.indexOf\\('{'\\)\\)\\);console.log\\('is_error:',j.is_error,'| 回答:',\\(j.result||''\\).slice\\(0,150\\)\\)}catch\\(e\\){console.log\\('parse fail:',d.slice\\(0,150\\)\\)}}\\)\")",
-      "Bash(git commit -q -m '开源准备：安全加固/基线对比/流式直播/继续调整/增量刷新/MCP Server/打包 *)"
+      "Bash(git commit -q -m '开源准备：安全加固/基线对比/流式直播/继续调整/增量刷新/MCP Server/打包 *)",
+      "Bash(git commit -q -m '文案清洗：全部界面用语改为直白产品文案（sonnet 执行） *)"
     ]
   },
   "skillOverrides": {

@@ -1,11 +1,11 @@
 import { useApp, type ActiveView } from '../store.ts';
 
 const VIEW_META: { key: ActiveView; icon: string; label: string; desc: string; dev?: boolean }[] = [
-  { key: 'journey', icon: '🧭', label: '用户旅程', desc: '用的人会经历什么' },
-  { key: 'features', icon: '🗺️', label: '功能地图', desc: '产品有哪些本事' },
-  { key: 'pageflow', icon: '📄', label: '页面流程', desc: '点了按钮去哪里' },
+  { key: 'journey', icon: '🧭', label: '用户流程', desc: '用户使用产品的完整步骤' },
+  { key: 'features', icon: '🗺️', label: '功能总览', desc: '产品包含哪些功能' },
+  { key: 'pageflow', icon: '📄', label: '页面流程', desc: '点击按钮后跳转到哪里' },
   { key: 'dataflow', icon: '💾', label: '数据流', desc: '数据从哪来到哪去', dev: false },
-  { key: 'tech', icon: '⚙️', label: '技术关系', desc: '文件与文件的关系', dev: true },
+  { key: 'tech', icon: '⚙️', label: '技术关系', desc: '文件与文件的依赖关系', dev: true },
 ];
 
 export function Sidebar() {
@@ -15,7 +15,7 @@ export function Sidebar() {
 
   return (
     <nav className="sidebar" aria-label="视图与目录">
-      <div className="section-label">看什么</div>
+      <div className="section-label">视图</div>
       {VIEW_META.filter(v => !v.dev || devMode).map(v => (
         <button key={v.key} className={`view-tab ${activeView === v.key ? 'active' : ''}`}
           onClick={() => setActiveView(v.key)}>
@@ -30,21 +30,21 @@ export function Sidebar() {
       {views && staleNodeIds.size > 0 && (
         <button style={{ width: '100%', fontSize: 12, marginTop: 8, borderColor: 'var(--amber)', color: 'var(--amber)' }}
           onClick={() => void refreshViews()} disabled={generatingViews}
-          title="只重新翻译受代码变化影响的部分，比整图重生成便宜得多">
-          {generatingViews ? <><span className="spin" /> 刷新中…</> : `🔄 刷新过期部分（${staleNodeIds.size} 个环节）`}
+          title="只重新生成受代码变化影响的部分，比整图重新生成节省很多">
+          {generatingViews ? <><span className="spin" /> 刷新中…</> : `🔄 刷新过期内容（${staleNodeIds.size} 个节点）`}
         </button>
       )}
       {views && (
         <button className="ghost" style={{ width: '100%', fontSize: 11, marginTop: 4, color: 'var(--ink-3)' }}
           onClick={() => void generateViews()} disabled={generatingViews}
-          title="代码变化大时可以整图重新生成">
-          {generatingViews ? <><span className="spin" /> 绘制中…</> : '↻ 整图重新生成'}
+          title="代码变化较大时可以重新生成所有视图">
+          {generatingViews ? <><span className="spin" /> 生成中…</> : '↻ 重新生成所有视图'}
         </button>
       )}
 
       {currentView && currentView.nodes.length > 0 && (
         <>
-          <div className="section-label" style={{ marginTop: 20 }}>本图目录</div>
+          <div className="section-label" style={{ marginTop: 20 }}>当前视图目录</div>
           {currentView.nodes.map(n => (
             <button key={n.id} className={`view-tab ${selectedNodeId === n.id ? 'active' : ''}`}
               style={{ padding: '5px 10px', fontSize: 12 }}
@@ -58,7 +58,7 @@ export function Sidebar() {
 
       {views?.projectSummary && (
         <>
-          <div className="section-label" style={{ marginTop: 20 }}>这个项目是</div>
+          <div className="section-label" style={{ marginTop: 20 }}>项目简介</div>
           <p style={{ fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.7 }}>{views.projectSummary}</p>
         </>
       )}
