@@ -22,7 +22,9 @@ export default function App() {
   }, [openProject, showToast]);
 
   useEffect(() => {
-    const last = localStorage.getItem('wdad:last-project');
+    // 深链优先：?open=<id>（MCP 一键打开时带上），否则恢复上次打开的项目
+    const fromUrl = new URLSearchParams(window.location.search).get('open');
+    const last = fromUrl ?? localStorage.getItem('wdad:last-project');
     if (last) handleOpen(last);
   }, [handleOpen]);
 

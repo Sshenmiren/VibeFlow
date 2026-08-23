@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import {
-  findFeature, getFileRole, getImpact, getNodeSource, getProjectSummary, listProjects, resolveStore,
+  findFeature, getFileRole, getImpact, getNodeSource, getProjectSummary, listProjects, openWebui, resolveStore,
 } from './mcp-tools.ts';
 
 /**
@@ -56,6 +56,21 @@ server.tool(
   '影响范围分析：改动某个节点或文件会波及哪些下游文件和业务环节',
   { project_path: z.string(), node_or_file: z.string().describe('节点 id 或文件相对路径') },
   async ({ project_path, node_or_file }) => text(getImpact(resolveStore(project_path), node_or_file)),
+);
+
+server.tool(
+  'open_webui',
+  '在浏览器打开 VibeFlow 可视化界面并直达指定项目：需要看用户流程/功能总览/页面流程/数据流图，或想在图上画模块改代码时用。会自动启动本地服务（若未运行）并导入该项目。',
+  { project_path: z.string().describe('项目根目录绝对路径，通常传当前工作目录') },
+  async ({ project_path }) => {
+    const { url, name, startedServer } = await openWebui(project_path);
+    return text({
+      ok: true,
+      opened: url,
+      project: name,
+      note: `已在浏览器打开「${name}」的可视化界面${startedServer ? '（本地服务已自动启动）' : ''}。若浏览器未自动弹出，请手动访问上面的地址。`,
+    });
+  },
 );
 
 await server.connect(new StdioServerTransport());

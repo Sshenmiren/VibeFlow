@@ -106,7 +106,9 @@ Let Claude Code query the project map directly (find features, look up file role
 claude mcp add vibeflow -- npx -y tsx <path-to-this-repo>/server/mcp.ts
 ```
 
-Once connected, Claude Code has access to 6 read-only tools: `list_projects`, `get_project_summary`, `find_feature`, `get_node_source`, `get_file_role`, `get_impact`.
+Once connected, Claude Code has access to these read-only query tools: `list_projects`, `get_project_summary`, `find_feature`, `get_node_source`, `get_file_role`, `get_impact`.
+
+There is also an `open_webui` tool: say "open the webui" in a project's Claude Code window and it automatically starts the local server (if not already running), imports the current project, and opens the browser directly to that project's visualization. Useful when you want to write code with Claude Code and view the flowchart side by side.
 
 ---
 
@@ -134,7 +136,7 @@ server/   Express + chokidar + web-tree-sitter (WASM) + simple-git
   analyzer  full and incremental analysis (content-hash change detection)
   views     static facts → LLM translation → zod validation → sourceRef verification
   modify    plan → AI code change → git diff → tests → accept / rollback
-  mcp.ts    MCP Server (6 read-only tools)
+  mcp.ts    MCP Server (6 read-only query tools + open_webui)
 
 client/   Vite + React 19 + @xyflow/react + @dagrejs/dagre
 shared/   data models + zod schemas

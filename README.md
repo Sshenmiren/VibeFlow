@@ -109,7 +109,9 @@ npm run dev     # 同时起后端 5177 和 Vite 前端 5173
 claude mcp add vibeflow -- npx -y tsx <本仓库路径>/server/mcp.ts
 ```
 
-接入后 Claude Code 可以使用以下 6 个只读工具：`list_projects`、`get_project_summary`、`find_feature`、`get_node_source`、`get_file_role`、`get_impact`。
+接入后 Claude Code 可以使用以下只读查询工具：`list_projects`、`get_project_summary`、`find_feature`、`get_node_source`、`get_file_role`、`get_impact`。
+
+还有一个 `open_webui` 工具：在项目的 Claude Code 窗口里说一句「打开 webui」，它会自动启动本地服务（若未运行）、导入当前项目、并在浏览器直接打开指向该项目的可视化界面。适合一边用 Claude Code 写代码、一边看流程图的场景。
 
 ---
 
@@ -137,7 +139,7 @@ server/   Express + chokidar + web-tree-sitter (WASM) + simple-git
   analyzer  全量 / 增量分析（内容 hash 判变）
   views     静态事实 → LLM 翻译 → zod 校验 → sourceRef 落地校验
   modify    计划 → AI 改码 → git diff → 测试 → accept / rollback
-  mcp.ts    MCP Server（6 个只读工具）
+  mcp.ts    MCP Server（6 个只读查询工具 + open_webui）
 
 client/   Vite + React 19 + @xyflow/react + @dagrejs/dagre
 shared/   数据模型 + zod schema
