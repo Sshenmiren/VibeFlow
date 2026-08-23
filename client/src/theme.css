@@ -284,10 +284,24 @@ textarea { resize: vertical; }
 
 /* React Flow 覆盖 */
 .react-flow__attribution { display: none; }
-.react-flow__edge-path { stroke: var(--ink-2); stroke-width: 1.5; }
-.react-flow__edge.selected .react-flow__edge-path { stroke: var(--cinnabar); stroke-width: 2; }
-.react-flow__edge-textbg { fill: var(--paper); }
-.react-flow__edge-text { fill: var(--ink-2); font-size: 11px; font-family: var(--sans); }
+/* 边：颜色由 layout.ts 逐条指定（每条不同色）。
+   这里只写"不带颜色"的属性，避免盖掉逐条配色；未指定色的边由内联 style 兜底。 */
+.react-flow__edge-path { stroke-width: 1.8; stroke-linecap: round; }
+/* 悬停/选中加粗，方便在密集图里用眼睛跟着一条线走 */
+.react-flow__edge:hover .react-flow__edge-path { stroke-width: 3.2; }
+.react-flow__edge.selected .react-flow__edge-path { stroke-width: 3.2; }
+
+/* 标签：字色由 labelStyle 逐条给（与线同色），这里只管字体与可读性描边 */
+.react-flow__edge-text {
+  font-size: 11px;
+  font-family: var(--sans);
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--card);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.react-flow__edge:hover .react-flow__edge-text { font-weight: 700; }
 .react-flow__controls {
   box-shadow: var(--shadow);
   border: 1px solid var(--line-strong);

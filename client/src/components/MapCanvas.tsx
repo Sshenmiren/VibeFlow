@@ -83,12 +83,18 @@ function CanvasInner() {
     data: { title: b.title, desc: b.desc, onChange: updateDraft, onDelete: deleteDraft },
   }), [updateDraft, deleteDraft]);
 
+  // 草稿连线：朱砂粗虚线 + 同色标签，与分析出的彩色实线区分开（"还不存在的东西"）
   const draftToEdge = (c: Blueprint['connections'][number]): Edge => ({
     id: c.id, source: c.source, target: c.target, label: c.label,
     type: 'smoothstep',
-    markerEnd: { type: 'arrowclosed' as const, color: '#b73e21' },
+    markerEnd: { type: 'arrowclosed' as const, color: '#b73e21', width: 16, height: 16 },
     style: DRAFT_EDGE_STYLE,
     className: 'draft-edge',
+    labelShowBg: true,
+    labelBgPadding: [5, 3],
+    labelBgBorderRadius: 4,
+    labelBgStyle: { fill: '#fdfaf1', fillOpacity: 0.95, stroke: '#b73e21', strokeWidth: 1 },
+    labelStyle: { fill: '#b73e21', fontSize: 11, fontWeight: 600 },
   });
 
   const addDraft = useCallback(() => {
