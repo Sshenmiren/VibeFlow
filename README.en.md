@@ -66,15 +66,35 @@ Open the data flow view. You see user input flowing directly to the database nod
 git clone <repository-url>
 cd vibeflow
 npm install
-
-# Development (frontend on 5173, backend on 5177)
-npm run dev
-
-# Production
-npm run build && npm start
 ```
 
-Open `http://localhost:5173` (development) or `http://localhost:5177` (production). On the home page, enter the absolute path to the target project folder. Empty folders are supported — views generate automatically as code is added.
+VibeFlow has two parts: the **backend** (`server/`, port 5177) parses code, calls the AI, reads and writes data, and runs git; the **frontend** (`client/`) is the flowchart and panels you see in the browser, which fetch all data from the backend. There are two ways to start the tool depending on what you want to do.
+
+**Just using the tool (recommended) — production mode:**
+
+```bash
+npm run build   # bundle the frontend into static files (run once, or after each git pull)
+npm start       # starts only the backend on port 5177, which also serves the bundled frontend
+```
+
+Open `http://localhost:5177`. One port, one process.
+
+**Modifying VibeFlow's own UI code — development mode:**
+
+```bash
+npm run dev     # starts the backend on 5177 and the Vite frontend on 5173 together
+```
+
+Open `http://localhost:5173`. Frontend source changes hot-reload automatically. Vite proxies `/api` requests to the backend on 5177, so you only deal with one address, 5173.
+
+After opening the appropriate URL, enter the absolute path to the target project folder on the home page to import it. Empty folders are supported — views generate automatically as code is written.
+
+| | Development `npm run dev` | Production `npm start` |
+|---|---|---|
+| Browser opens | 5173 | 5177 |
+| Processes | 2 (frontend and backend separate) | 1 (backend serves frontend) |
+| Frontend form | live-compiled source, auto-refresh on change | pre-bundled static files |
+| Best for | developing this tool | using this tool |
 
 ---
 
