@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { groundViews } from '../server/views.ts';
-import type { FileFact } from '../shared/types.ts';
+import { afterAll, describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { buildFactsDigest, groundViews } from '../server/views.ts';
+import type { FileFact, ProjectMeta } from '../shared/types.ts';
 
 const fakeFile = (path: string): FileFact => ({
   path, lang: 'ts', hash: 'h', size: 1, lines: 1, imports: [], symbols: [], tags: [],
@@ -56,5 +59,43 @@ describe('groundViews：sourceRef 落地校验与 id 规范化', () => {
     expect(dropped).toBe(1);
     expect(views[0].nodes).toHaveLength(1);
     expect(views[0].edges).toHaveLength(0);
+  });
+});
+
+describe('buildFactsDigest：不受支持语言项目不产出空 digest', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'wdad-digest-'));
+  afterAll(() => fs.rmSync(tmp, { recursive: true, force: true }));
+
+  const otherFile = (p: string): FileFact => ({
+    path: p, lang: 'other', hash: 'h', size: 1, lines: 3, imports: [], symbols: [], tags: [],
+  });
+  const meta: ProjectMeta = {
+    id: 'x', path: tmp, name: 'psproj', techStack: [], importedAt: '', analysisVersion: 1,
+    analyzedAt: '', gitCommit: '', fileCount: 1, status: 'ready',
+  };
+
+  it('全是 .ps1/.txt（other 语言、零符号）时，靠内容预览兜底而非跳过', () => {
+    fs.writeFileSync(path.join(tmp, 'run.ps1'), 'param($Id)\nWrite-Host "查询邮箱前缀"\n');
+    fs.writeFileSync(path.join(tmp, 'readme.txt'), '输入学号即可查询同学邮箱\n');
+    const files: Record<string, FileFact> = {
+      'run.ps1': otherFile('run.ps1'),
+      'readme.txt': otherFile('readme.txt'),
+    };
+    const digest = buildFactsDigest(tmp, meta, files);
+    expect(digest).toContain('run.ps1');
+    expect(digest).toContain('查询邮箱前缀');
+    expect(digest).toContain('输入学号即可查询同学邮箱');
+    expect(digest).toContain('内容预览');
+  });
+
+  it('存在带符号文件时，other 文件仍照旧跳过（不喂预览、不膨胀成本）', () => {
+    fs.writeFileSync(path.join(tmp, 'skip.ps1'), 'Write-Host "不该出现"\n');
+    const files: Record<string, FileFact> = {
+      'src/App.tsx': { path: 'src/App.tsx', lang: 'ts', hash: 'h', size: 1, lines: 1, imports: [], symbols: [{ name: 'App', kind: 'function', startLine: 1, endLine: 1, calls: [] }], tags: [] },
+      'skip.ps1': otherFile('skip.ps1'),
+    };
+    const digest = buildFactsDigest(tmp, meta, files);
+    expect(digest).toContain('src/App.tsx');
+    expect(digest).not.toContain('skip.ps1');
   });
 });

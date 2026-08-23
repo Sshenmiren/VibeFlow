@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// whatdidaido 一键启动：必要时先构建前端，然后以生产模式起服务
+// VibeFlow 一键启动：必要时先构建前端，然后以生产模式起服务
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,7 +17,7 @@ if (!fs.existsSync(path.join(dist, 'index.html'))) {
   }
 }
 
-console.log('🗺️  whatdidaido 启动中…');
+console.log('🗺️  VibeFlow 启动中…');
 const child = spawn('npx', ['tsx', 'server/index.ts'], {
   cwd: root,
   stdio: 'inherit',

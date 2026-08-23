@@ -210,9 +210,14 @@ export function buildFactsDigest(root: string, meta: ProjectMeta, files: Record<
   // 成本控制：大项目只保留符号概要
   const budget = 60_000;
   let used = 0;
+  // 没有一个文件带得出符号（纯 PowerShell/Shell/Go/Rust 等解析器不深入的项目），
+  // 靠内容预览兜底，否则 digest 会空，LLM 只能返回空视图。
+  const noSymbolsAtAll = sorted.every(f => f.symbols.length === 0);
   for (const f of sorted) {
-    if (f.lang === 'other') continue;
     if (f.lang === 'json' && !f.path.endsWith('package.json')) continue;
+    const hasSymbols = f.symbols.length > 0;
+    // 常规跳过 other；但若整个项目都没有符号，则改用内容预览兜底
+    if (f.lang === 'other' && !noSymbolsAtAll) continue;
     const parts: string[] = [`\n${f.path} [${f.lang}${f.tags.length ? ' ' + f.tags.join(',') : ''}] ${f.lines}行`];
     if (f.imports.length) {
       const internal = f.imports.filter(i => i.resolved).map(i => i.resolved);
@@ -225,6 +230,11 @@ export function buildFactsDigest(root: string, meta: ProjectMeta, files: Record<
       const calls = s.calls.length ? ` 调用: ${s.calls.slice(0, 12).join(',')}` : '';
       parts.push(`  - ${s.kind} ${s.signature ?? s.name}${extra}${calls}`);
     }
+    // 无符号文件（含被跳过语言）：喂一段内容预览，让 LLM 有真实文本可翻译
+    if (!hasSymbols) {
+      const preview = readPreview(root, f.path);
+      if (preview) parts.push(`  内容预览:\n${preview.split('\n').map(l => '    ' + l).join('\n')}`);
+    }
     const chunk = parts.join('\n');
     if (used + chunk.length > budget) {
       parts.length = 1; // 超预算只留文件行
@@ -236,6 +246,18 @@ export function buildFactsDigest(root: string, meta: ProjectMeta, files: Record<
     }
   }
   return lines.join('\n');
+}
+
+/** 读文件前若干行作为预览，供无符号文件兜底翻译。二进制/超大文件安全跳过。 */
+function readPreview(root: string, relPath: string, maxLines = 30, maxChars = 1200): string | null {
+  try {
+    const content = fs.readFileSync(path.join(root, relPath), 'utf8');
+    if (content.includes(' ')) return null; // 二进制
+    const text = content.split('\n').slice(0, maxLines).join('\n');
+    return text.length > maxChars ? text.slice(0, maxChars) + '…' : text;
+  } catch {
+    return null;
+  }
 }
 
 function buildPrompt(digest: string): string {

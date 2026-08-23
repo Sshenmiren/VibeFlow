@@ -10,7 +10,7 @@ let root: string;
 let store: ProjectStore;
 
 beforeAll(() => {
-  // 造一个最小的假项目 + .whatdidaido 存储
+  // 造一个最小的假项目 + .vibeflow 存储
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'wdad-mcp-'));
   fs.mkdirSync(path.join(root, 'src'), { recursive: true });
   fs.writeFileSync(path.join(root, 'src', 'pay.ts'), 'export function charge(amount: number) {\n  return amount * 100;\n}\n');

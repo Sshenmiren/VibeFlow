@@ -1,6 +1,8 @@
-# whatdidaido
+# VibeFlow
 
-Converts a code project into visual diagrams that non-programmers can understand, and lets you drive AI code changes through natural language or by drawing modules directly on the diagram. Built as a visual companion for AI coding tools like Claude Code and Codex.
+VibeFlow is a Vibe Coding companion tool. It currently supports Claude Code fully, and lets you drive AI code changes via natural language or by drawing modules directly on the graph.
+
+It lets non-programmers understand their own vibe-coded projects through an easy-to-read flowchart view rather than folders and opaque source code, and make changes quickly. It also removes the need to carefully craft complex prompts to constrain AI behavior and prevent over-modification — instead you express intent visually, editing the product precisely or adding new features accurately. This eliminates the time developers spend composing prompts, and means vibe coding no longer demands strong writing skills from the user.
 
 [中文 README](./README.md)
 
@@ -62,7 +64,7 @@ Open the data flow view. You see user input flowing directly to the database nod
 
 ```bash
 git clone <repository-url>
-cd whatdidaido
+cd vibeflow
 npm install
 
 # Development (frontend on 5173, backend on 5177)
@@ -81,7 +83,7 @@ Open `http://localhost:5173` (development) or `http://localhost:5177` (productio
 Let Claude Code query the project map directly (find features, look up file roles, analyze impact) without re-scanning the codebase:
 
 ```bash
-claude mcp add whatdidaido -- npx -y tsx <path-to-this-repo>/server/mcp.ts
+claude mcp add vibeflow -- npx -y tsx <path-to-this-repo>/server/mcp.ts
 ```
 
 Once connected, Claude Code has access to 6 read-only tools: `list_projects`, `get_project_summary`, `find_feature`, `get_node_source`, `get_file_role`, `get_impact`.
@@ -98,6 +100,8 @@ Once connected, Claude Code has access to 6 read-only tools: `list_projects`, `g
 | `OPENAI_API_KEY` | — | API key for OpenAI-compatible mode (stored server-side, never sent to the browser) |
 
 The server binds to `127.0.0.1` by default. All analysis runs locally; no source code is sent to external services.
+
+**Note: if you are using a third-party or relay API, select an API group that supports third-party tool calls, otherwise the tool will not function.**
 
 ---
 
@@ -122,7 +126,7 @@ Design decisions:
 - **Strict AI output validation**: zod schemas enforce structure; sourceRef verification cross-checks against actual file lists, preventing the AI from fabricating non-existent file paths.
 - **Replaceable AI engine**: defaults to the local `claude` CLI in headless mode; can be switched to any OpenAI-compatible API. API keys are stored server-side and never sent to the browser.
 - **Explanation caching**: cached by source content hash; LLM is not called again if the code has not changed. Lazy generation: explanations are triggered only when a node is opened; multiple nodes are batched into a single call.
-- **Data stored in the target project's `.whatdidaido/` directory** (JSON). Excluded via `.git/info/exclude` so the user's `.gitignore` is not modified.
+- **Data stored in the target project's `.vibeflow/` directory** (JSON). Excluded via `.git/info/exclude` so the user's `.gitignore` is not modified.
 - **Local-first**: server binds to `127.0.0.1` by default; analysis stays on the local machine.
 
 ---
@@ -146,4 +150,4 @@ Issues and PRs are welcome. Before submitting a PR, run `npm run typecheck && np
 
 ## License
 
-MIT © whatdidaido contributors
+MIT © VibeFlow contributors

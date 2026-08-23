@@ -22,7 +22,7 @@ function writeJson(file: string, data: unknown) {
 
 // ---------- 全局：项目注册表 + 设置（存用户目录） ----------
 
-const HOME_DIR = path.join(os.homedir(), '.whatdidaido');
+const HOME_DIR = path.join(os.homedir(), '.vibeflow');
 const REGISTRY_FILE = path.join(HOME_DIR, 'registry.json');
 const SETTINGS_FILE = path.join(HOME_DIR, 'settings.json');
 
@@ -59,12 +59,12 @@ export function addCost(usd: number) {
   return s.totalCostUsd;
 }
 
-// ---------- 每项目存储（存目标项目 .whatdidaido/ 下，刷新页面不丢） ----------
+// ---------- 每项目存储（存目标项目 .vibeflow/ 下，刷新页面不丢） ----------
 
 export class ProjectStore {
   readonly dir: string;
   constructor(readonly projectRoot: string) {
-    this.dir = path.join(projectRoot, '.whatdidaido');
+    this.dir = path.join(projectRoot, '.vibeflow');
   }
 
   private file(name: string) { return path.join(this.dir, name); }

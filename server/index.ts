@@ -486,5 +486,5 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`whatdidaido server → http://localhost:${PORT}`);
+  console.log(`vibeflow server → http://localhost:${PORT}`);
 });

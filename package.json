@@ -1,12 +1,12 @@
 {
-  "name": "whatdidaido",
+  "name": "vibeflow",
   "version": "0.2.0",
   "private": true,
   "type": "module",
   "license": "MIT",
   "description": "把软件项目变成普通人能看懂的活地图 —— 项目级代码可视化与 AI 修改工具（Claude Code 的可视化搭档）",
   "bin": {
-    "whatdidaido": "bin/whatdidaido.js"
+    "vibeflow": "bin/vibeflow.js"
   },
   "scripts": {
     "dev": "concurrently -n server,client -c yellow,cyan \"npm run dev:server\" \"npm run dev:client\"",

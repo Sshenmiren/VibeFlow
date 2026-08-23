@@ -9,7 +9,7 @@ export function TopBar({ onHome }: { onHome: () => void }) {
   return (
     <header className="topbar">
       <button className="ghost serif" style={{ fontSize: 16, fontWeight: 900 }} onClick={onHome} title="回到项目选择">
-        📜 whatdidaido
+        📜 VibeFlow
       </button>
       {meta && (
         <>

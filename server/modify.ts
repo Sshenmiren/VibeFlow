@@ -22,7 +22,7 @@ export async function ensureGitRepo(root: string): Promise<{ initialized: boolea
   excludeStoreDir(root);
   await ensureGitIdentity(g);
   await g.add('-A');
-  await g.commit('whatdidaido: 初始快照（导入项目时自动创建）');
+  await g.commit('vibeflow: 初始快照（导入项目时自动创建）');
   return { initialized: true };
 }
 
@@ -32,8 +32,8 @@ async function ensureGitIdentity(g: SimpleGit) {
     const email = (await g.raw(['config', 'user.email'])).trim();
     if (email) return;
   } catch { /* 未配置 → 落到下面 */ }
-  await g.addConfig('user.name', 'whatdidaido', false, 'local');
-  await g.addConfig('user.email', 'whatdidaido@local', false, 'local');
+  await g.addConfig('user.name', 'vibeflow', false, 'local');
+  await g.addConfig('user.email', 'vibeflow@local', false, 'local');
 }
 
 /** 用 .git/info/exclude 忽略我们的存储目录（不动用户的 .gitignore） */
@@ -41,9 +41,9 @@ function excludeStoreDir(root: string) {
   try {
     const excludeFile = path.join(root, '.git', 'info', 'exclude');
     const current = fs.existsSync(excludeFile) ? fs.readFileSync(excludeFile, 'utf8') : '';
-    if (!current.includes('.whatdidaido')) {
+    if (!current.includes('.vibeflow')) {
       fs.mkdirSync(path.dirname(excludeFile), { recursive: true });
-      fs.writeFileSync(excludeFile, current + '\n.whatdidaido/\n');
+      fs.writeFileSync(excludeFile, current + '\n.vibeflow/\n');
     }
   } catch { /* 非致命 */ }
 }
@@ -57,7 +57,7 @@ export async function isWorkingTreeClean(root: string): Promise<boolean> {
 export async function snapshotCommit(root: string): Promise<void> {
   const g = git(root);
   await g.add('-A');
-  await g.commit('whatdidaido: 修改前快照');
+  await g.commit('vibeflow: 修改前快照');
 }
 
 // ---------- 修改计划（纯静态，零 AI 成本） ----------
@@ -199,7 +199,7 @@ ${context}
 1. 只做用户要求的修改，保持最小改动
 2. 保持项目现有代码风格
 3. 不要运行任何命令、不要 git 操作、不要创建文档
-4. 不要动 .whatdidaido 目录
+4. 不要动 .vibeflow 目录
 5. 改完后简要说明你改了什么（中文，2-4句）`;
 
   return runModification(store, cs, all, prompt, undefined, baseline, onUpdate, onLog);
@@ -319,7 +319,7 @@ export async function acceptChangeSet(store: ProjectStore, csId: string): Promis
   if (cs.status !== 'tested' && cs.status !== 'diffed') throw new Error(`当前状态不能接受：${cs.status}`);
   const g = git(store.projectRoot);
   await g.add('-A');
-  await g.commit(`whatdidaido: ${cs.instruction.slice(0, 60)}`);
+  await g.commit(`vibeflow: ${cs.instruction.slice(0, 60)}`);
   cs.status = 'accepted';
   cs.updatedAt = new Date().toISOString();
   store.saveChangeSets(all);
@@ -340,7 +340,7 @@ export async function rollbackChangeSet(store: ProjectStore, csId: string): Prom
   const g = git(store.projectRoot);
   // 执行前保证过 working tree 干净，所以 reset+clean 恰好回到修改前
   await g.reset(['--hard', 'HEAD']);
-  await g.clean('f', ['-d', '-e', '.whatdidaido']);
+  await g.clean('f', ['-d', '-e', '.vibeflow']);
   cs.status = 'rolledback';
   cs.updatedAt = new Date().toISOString();
   store.saveChangeSets(all);
@@ -393,7 +393,7 @@ export function detectChecks(root: string): { cwd: string; command: string; labe
 function safeSubdirs(root: string): string[] {
   try {
     return fs.readdirSync(root, { withFileTypes: true })
-      .filter(e => e.isDirectory() && !['node_modules', '.git', '.whatdidaido', 'dist'].includes(e.name))
+      .filter(e => e.isDirectory() && !['node_modules', '.git', '.vibeflow', 'dist'].includes(e.name))
       .map(e => e.name);
   } catch { return []; }
 }

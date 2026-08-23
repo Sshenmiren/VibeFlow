@@ -29,7 +29,7 @@ export function Landing({ onOpen }: { onOpen: (id: string) => void }) {
     <div className="paper-bg" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="fade-in" style={{ width: 560, maxWidth: '90vw' }}>
         <h1 className="serif" style={{ fontSize: 42, fontWeight: 900, margin: 0, letterSpacing: '0.02em' }}>
-          📜 whatdidaido
+          📜 VibeFlow
         </h1>
         <p style={{ fontSize: 15, color: 'var(--ink-2)', marginTop: 6 }}>
           把你的软件项目转换成<strong style={{ color: 'var(--cinnabar)' }}>可视化的项目视图</strong>。<br />

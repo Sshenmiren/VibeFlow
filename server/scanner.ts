@@ -6,7 +6,7 @@ import ignore, { type Ignore } from 'ignore';
 const ALWAYS_EXCLUDE_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', 'out', '.next', '.nuxt', '.output',
   '__pycache__', '.venv', 'venv', 'env', '.pytest_cache', '.mypy_cache',
-  'coverage', '.whatdidaido', '.idea', '.vscode', '.claude',
+  'coverage', '.vibeflow', '.idea', '.vscode', '.claude',
 ]);
 
 const BINARY_EXT = new Set([

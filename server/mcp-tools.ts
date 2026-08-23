@@ -6,7 +6,7 @@ import { ProjectStore, listRegistry } from './store.ts';
 
 /**
  * MCP 工具的纯函数层：让 Claude Code 等 coding agent 直接查询项目地图，
- * 不用重新扫描整个项目。全部只读，直接读 .whatdidaido 存储。
+ * 不用重新扫描整个项目。全部只读，直接读 .vibeflow 存储。
  */
 
 export function listProjects(): { name: string; path: string; analyzed: boolean; summary?: string }[] {
@@ -124,12 +124,12 @@ export function getImpact(store: ProjectStore, nodeIdOrFile: string) {
   return computeImpact(nodeId, store.getViews(), store.getFiles());
 }
 
-/** 把用户给的路径解析成 ProjectStore（必须已被 whatdidaido 分析过） */
+/** 把用户给的路径解析成 ProjectStore（必须已被 VibeFlow 分析过） */
 export function resolveStore(projectPath: string): ProjectStore {
   const abs = path.resolve(projectPath);
   const store = new ProjectStore(abs);
   if (!store.getMeta()) {
-    throw new Error(`这个路径还没被 whatdidaido 分析过：${abs}。先在 whatdidaido 面板里导入它。`);
+    throw new Error(`这个路径还没被 VibeFlow 分析过：${abs}。先在 VibeFlow 面板里导入它。`);
   }
   return store;
 }

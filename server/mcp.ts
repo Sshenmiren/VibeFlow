@@ -6,19 +6,19 @@ import {
 } from './mcp-tools.ts';
 
 /**
- * whatdidaido MCP Server —— 让 Claude Code / 其他 coding agent 直接查询项目地图。
+ * VibeFlow MCP Server —— 让 Claude Code / 其他 coding agent 直接查询项目地图。
  * 接入方式（在任意终端）：
- *   claude mcp add whatdidaido -- npx -y tsx <本仓库路径>/server/mcp.ts
+ *   claude mcp add vibeflow -- npx -y tsx <本仓库路径>/server/mcp.ts
  * 之后在 Claude Code 里就能问："支付逻辑在哪个文件？"它会直接查图回答，不用重新扫描。
  */
 
-const server = new McpServer({ name: 'whatdidaido', version: '0.1.0' });
+const server = new McpServer({ name: 'vibeflow', version: '0.1.0' });
 
 const text = (data: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(data, null, 1) }] });
 
 server.tool(
   'list_projects',
-  '列出 whatdidaido 已分析过的项目（名称、路径、一句话总述）',
+  '列出 VibeFlow 已分析过的项目（名称、路径、一句话总述）',
   {},
   async () => text(listProjects()),
 );

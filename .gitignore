@@ -3,5 +3,6 @@ dist/
 client/dist/
 *.log
 .env
-.whatdidaido/
+.vibeflow/
 coverage/
+.claude/settings.local.json

@@ -1,6 +1,11 @@
-# whatdidaido
+# VibeFlow
+本项目是一款Vibe Coding的辅助工具，目前完美支持Claude Code，能用自然语言或在图上直接画模块来驱动 AI 修改代码。具体效果可见图。
+此工具既可使非专业编程人员在利用vibe coding创作自己的代码作品时，以方便理解的流程图视角，而非文件夹以及晦涩的代码，了解自己作品的各种运行方式，并方便快速地进行修改；
 
-把代码项目转换成非程序员也能看懂的可视化项目视图，并能用自然语言或在图上直接画模块来驱动 AI 修改代码。它是 Claude Code / Codex 这类 AI coding 工具的可视化搭档。
+也可使用户想修改自身作品时 无需费尽心思 构思复杂的提示词 来界定AI vibe coding的行为以及边界，避免过度修改；
+而是直观地图形地精确修改产品，或准确的增加新功能。这省去了大量开发者构思提示词的时间。
+
+这使得Vibe Coding编程时 不再要求用户的文字文字功底。
 
 [English README](./README.en.md)
 
@@ -13,7 +18,7 @@
 
 **四张视图，读懂 AI 写的代码**
 
-AI 写完一堆代码，你不知道它实现了什么。这个工具把项目自动转成四张图：用户流程、功能总览、页面流程、数据流。每个节点点开都有大白话说明、伪代码、对应的真实源码文件和行号。开发者模式另提供技术关系图（文件夹 → 文件 → 导入关系）。
+AI 写完一堆代码，你不知道它实现了什么。这个工具把项目自动转成四张图：用户流程、功能总览、页面流程、数据流。每个节点点开都有自然语言说明、逻辑伪代码、对应的真实源码文件和行号。开发者模式另提供技术关系图（文件夹 → 文件 → 导入关系）。
 
 **在图上画模块，驱动 AI 改代码**
 
@@ -62,7 +67,7 @@ chokidar 监听文件变化。你在另一个终端让 Claude Code 改代码，�
 
 ```bash
 git clone <仓库地址>
-cd whatdidaido
+cd vibeflow
 npm install
 
 # 开发模式（前端 5173，后端 5177）
@@ -81,7 +86,7 @@ npm run build && npm start
 让 Claude Code 直接查询项目地图（找功能、查文件角色、分析影响范围等），而不是重新扫描代码：
 
 ```bash
-claude mcp add whatdidaido -- npx -y tsx <本仓库路径>/server/mcp.ts
+claude mcp add vibeflow -- npx -y tsx <本仓库路径>/server/mcp.ts
 ```
 
 接入后 Claude Code 可以使用以下 6 个只读工具：`list_projects`、`get_project_summary`、`find_feature`、`get_node_source`、`get_file_role`、`get_impact`。
@@ -98,6 +103,8 @@ claude mcp add whatdidaido -- npx -y tsx <本仓库路径>/server/mcp.ts
 | `OPENAI_API_KEY` | — | OpenAI 兼容模式 API Key（存服务端，不下发前端） |
 
 默认只绑 `127.0.0.1`，分析在本机完成，不向外部发送代码。
+
+**注意：如果使用第三方API，如中转站等，请选择支持第三方的API分组，否则无法使用。**
 
 ---
 
@@ -122,7 +129,7 @@ shared/   数据模型 + zod schema
 - **AI 输出强校验**：zod schema 约束结构，sourceRef 落地校验（对照实际文件列表），禁止 AI 编造不存在的文件路径。
 - **AI 引擎可替换**：默认用本机 `claude` CLI（headless 模式），可切换为任意 OpenAI 兼容 API，Key 存服务端不进浏览器。
 - **解释缓存**：按代码内容 hash 缓存，代码没变不重复调用 LLM。惰性生成：点开节点才触发，多节点批量合进一次调用。
-- **数据存目标项目 `.whatdidaido/` 目录**（JSON），通过 `.git/info/exclude` 忽略，不污染用户的 `.gitignore`。
+- **数据存目标项目 `.vibeflow/` 目录**（JSON），通过 `.git/info/exclude` 忽略，不污染用户的 `.gitignore`。
 - **本地优先**：服务默认绑 `127.0.0.1`，分析在本机完成。
 
 ---
@@ -146,4 +153,4 @@ shared/   数据模型 + zod schema
 
 ## 开源协议
 
-MIT © whatdidaido contributors
+MIT © VibeFlow contributors

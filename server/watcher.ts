@@ -9,7 +9,7 @@ export interface ProjectWatcher {
 
 const IGNORED_SEGMENTS = new Set([
   'node_modules', '.git', 'dist', 'build', 'out', '.next', '__pycache__',
-  '.venv', 'venv', 'coverage', '.whatdidaido', '.idea', '.vscode', '.claude',
+  '.venv', 'venv', 'coverage', '.vibeflow', '.idea', '.vscode', '.claude',
 ]);
 
 /**
