@@ -13,23 +13,26 @@ export function BizEdge({
   label, labelStyle, labelBgStyle, style, markerEnd, data,
 }: EdgeProps) {
   const d = (data ?? {}) as { labelShift?: number; borderRadius?: number; offset?: number };
+  const shift = d.labelShift ?? 0;
+
+  // 反向边对：让两条边的拐弯点落在不同位置（stepPosition 0.36 / 0.64），
+  // 这样它们本身就是两条可区分的折线，标签各自落在自己路径的中点，天然分开。
+  // 不能沿直线 source→target 推标签：smoothstep 是直角折线，那样会把标签
+  // 推到别的线旁边（看起来像标错了线）。
   const [path, labelX, labelY] = getSmoothStepPath({
     sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition,
     borderRadius: d.borderRadius ?? 14,
     offset: d.offset ?? 20,
+    ...(shift !== 0 ? { stepPosition: shift < 0 ? 0.36 : 0.64 } : {}),
   });
 
-  // 反向边对的标签同时做两件事才真正分开：
-  //   1) 沿路径方向前后错开（避免落在同一中点）
-  //   2) 垂直路径方向左右错开（各自贴住自己那条线，不会挤在一起）
-  const shift = d.labelShift ?? 0;
+  // 再沿垂直路径方向微调，确保贴住本条线又不与对向标签相撞
   const dx = targetX - sourceX;
   const dy = targetY - sourceY;
   const len = Math.hypot(dx, dy) || 1;
-  const along = shift === 0 ? 0 : shift * Math.max(40, Math.min(96, len * 0.3));
-  const across = shift * 13;
-  const lx = labelX + (dx / len) * along + (-dy / len) * across;
-  const ly = labelY + (dy / len) * along + (dx / len) * across;
+  const across = shift * 22;
+  const lx = labelX + (-dy / len) * across;
+  const ly = labelY + (dx / len) * across;
 
   return (
     <>
