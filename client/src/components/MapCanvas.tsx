@@ -9,6 +9,7 @@ import { api } from '../api.ts';
 import { selectActiveDraftCs, useApp } from '../store.ts';
 import { layoutBizView, layoutTechGraph } from '../layout.ts';
 import { nodeTypes } from './MapNodes.tsx';
+import { edgeTypes } from './MapEdges.tsx';
 import { ChangeSetProgress } from './ChangeSetProgress.tsx';
 
 let draftCounter = 0;
@@ -86,15 +87,12 @@ function CanvasInner() {
   // 草稿连线：朱砂粗虚线 + 同色标签，与分析出的彩色实线区分开（"还不存在的东西"）
   const draftToEdge = (c: Blueprint['connections'][number]): Edge => ({
     id: c.id, source: c.source, target: c.target, label: c.label,
-    type: 'smoothstep',
+    type: 'biz',
+    data: { labelShift: 0, borderRadius: 14, offset: 20 },
     markerEnd: { type: 'arrowclosed' as const, color: '#b73e21', width: 16, height: 16 },
     style: DRAFT_EDGE_STYLE,
     className: 'draft-edge',
-    labelShowBg: true,
-    labelBgPadding: [5, 3],
-    labelBgBorderRadius: 4,
-    labelBgStyle: { fill: '#fdfaf1', fillOpacity: 0.95, stroke: '#b73e21', strokeWidth: 1 },
-    labelStyle: { fill: '#b73e21', fontSize: 11, fontWeight: 600 },
+    labelStyle: { color: '#b73e21', borderColor: '#b73e21' },
   });
 
   const addDraft = useCallback(() => {
@@ -248,6 +246,7 @@ function CanvasInner() {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onNodeDragStop={onNodeDragStop}
         onConnect={onConnect}

@@ -10,7 +10,8 @@ const node = (id: string, group?: string) => ({
 
 const stroke = (e: { style?: Record<string, unknown> }) => e.style?.stroke as string;
 const dash = (e: { style?: Record<string, unknown> }) => e.style?.strokeDasharray as string | undefined;
-const labelFill = (e: { labelStyle?: Record<string, unknown> }) => e.labelStyle?.fill as string;
+const labelFill = (e: { labelStyle?: Record<string, unknown> }) => e.labelStyle?.color as string;
+const shiftOf = (e: { data?: Record<string, unknown> }) => e.data?.labelShift as number;
 
 describe('业务视图连线：逐条配色与标签可读性', () => {
   const flow: BizView = {
@@ -42,11 +43,11 @@ describe('业务视图连线：逐条配色与标签可读性', () => {
     }
   });
 
-  it('标签有纸色底衬，避免压在别的线上看不清', () => {
+  it('标签用自定义边渲染，边框与线同色（HTML 标签才能挪位置避重叠）', () => {
     const { edges } = layoutBizView(flow, new Set(), null);
     for (const e of edges) {
-      expect(e.labelShowBg).toBe(true);
-      expect((e.labelBgStyle as { fill: string }).fill).toBeTruthy();
+      expect(e.type).toBe('biz');
+      expect((e.labelStyle as { borderColor: string }).borderColor).toBe(stroke(e));
     }
   });
 
@@ -65,6 +66,48 @@ describe('业务视图连线：逐条配色与标签可读性', () => {
     for (let i = 1; i < edges.length; i++) {
       expect(stroke(edges[i])).not.toBe(stroke(edges[i - 1]));
     }
+  });
+});
+
+describe('互为反向的两条边：标签必须错开，不能只显示一段文字', () => {
+  const pair: BizView = {
+    kind: 'pageflow', title: '页面流程',
+    nodes: [node('gear1'), node('gear2'), node('other')],
+    edges: [
+      { id: 'p0', source: 'gear1', target: 'gear2', label: '按C键加速' },
+      { id: 'p1', source: 'gear2', target: 'gear1', label: '再按C键减速' },
+      { id: 'p2', source: 'gear1', target: 'other', label: '按住Shift' },
+    ],
+  };
+
+  it('反向边对拿到方向相反的标签偏移', () => {
+    const { edges } = layoutBizView(pair, new Set(), null);
+    const byId = new Map(edges.map(e => [e.id, e]));
+    const a = shiftOf(byId.get('p0')!);
+    const b = shiftOf(byId.get('p1')!);
+    expect(a).not.toBe(0);
+    expect(b).not.toBe(0);
+    expect(Math.sign(a)).toBe(-Math.sign(b)); // 一个往前推，一个往后推
+  });
+
+  it('没有反向配对的边不偏移（保持在路径中点）', () => {
+    const { edges } = layoutBizView(pair, new Set(), null);
+    const solo = edges.find(e => e.id === 'p2')!;
+    expect(shiftOf(solo)).toBe(0);
+  });
+
+  it('三条边构成的环不会被误判为反向对', () => {
+    const cycle: BizView = {
+      kind: 'pageflow', title: 'x',
+      nodes: [node('a'), node('b'), node('c')],
+      edges: [
+        { id: 'c0', source: 'a', target: 'b', label: '1' },
+        { id: 'c1', source: 'b', target: 'c', label: '2' },
+        { id: 'c2', source: 'c', target: 'a', label: '3' },
+      ],
+    };
+    const { edges } = layoutBizView(cycle, new Set(), null);
+    expect(edges.every(e => shiftOf(e) === 0)).toBe(true);
   });
 });
 

@@ -1,5 +1,5 @@
 import dagre from '@dagrejs/dagre';
-import type { BuiltInEdge, Edge, Node } from '@xyflow/react';
+import type { Edge, Node } from '@xyflow/react';
 import type { BizView, TechGraph } from '../../shared/types.ts';
 
 const BIZ_W = 200;
@@ -36,14 +36,17 @@ function edgeColor(i: number): string {
 }
 
 /**
- * 统一的业务边样式：线与标签同色，标签带纸色描边避免压线糊成一片。
- * back=true（回流边，如"再按一次关闭"）画成虚线：它必然要往回绕，虚线让人一眼
- * 认出是"返回/回退"，而不是误以为图乱。
+ * 统一的业务边样式：线与标签同色，标签带纸色底避免压线糊成一片。
+ * - back=true（回流边，如"再按一次关闭"）画虚线：它必然往回绕，虚线让人一眼
+ *   认出是"返回/回退"，而不是误以为图乱。
+ * - labelShift（-1/0/+1）沿路径推开标签：一对互为反向的边中点重合，
+ *   不推开就只看得见一段文字。
  */
 function bizEdge(
   e: { id: string; source: string; target: string; label?: string },
   i: number,
   back = false,
+  labelShift = 0,
 ): Edge {
   const color = edgeColor(i);
   return {
@@ -51,21 +54,36 @@ function bizEdge(
     source: e.source,
     target: e.target,
     label: e.label,
-    type: 'smoothstep',
-    // 圆角拐弯 + 每条边错开一点，避免平行边完全重叠
-    pathOptions: { borderRadius: 14, offset: 12 + (i % 3) * 6 },
+    type: 'biz',
+    data: { labelShift, borderRadius: 14, offset: 12 + (i % 3) * 6 },
     style: {
       stroke: color,
       strokeWidth: back ? 1.5 : 1.8,
       ...(back ? { strokeDasharray: '7 5' } : {}),
     },
     markerEnd: { type: 'arrowclosed' as const, color, width: 16, height: 16 },
-    labelShowBg: true,
-    labelBgPadding: [5, 3],
-    labelBgBorderRadius: 4,
-    labelBgStyle: { fill: '#fdfaf1', fillOpacity: 0.92, stroke: color, strokeWidth: 1 },
-    labelStyle: { fill: color, fontSize: 11, fontWeight: 600 },
-  } satisfies BuiltInEdge as Edge;
+    // 标签走 HTML（EdgeLabelRenderer），故用 CSS 属性而非 SVG 的 fill/stroke
+    labelStyle: { color, borderColor: color },
+  };
+}
+
+/**
+ * 找出互为反向的边对（A→B 与 B→A），给两边分配相反的标签偏移。
+ * 返回 edgeId → shift(-1|+1)；不成对的边不在表里（shift 0）。
+ */
+function reversePairShifts(edges: { id: string; source: string; target: string }[]): Map<string, number> {
+  const shifts = new Map<string, number>();
+  const byPair = new Map<string, string>(); // "src|tgt" -> edgeId
+  for (const e of edges) byPair.set(`${e.source}|${e.target}`, e.id);
+  for (const e of edges) {
+    if (shifts.has(e.id)) continue;
+    const backId = byPair.get(`${e.target}|${e.source}`);
+    if (backId && backId !== e.id) {
+      shifts.set(e.id, -1);
+      shifts.set(backId, 1);
+    }
+  }
+  return shifts;
 }
 
 /** 业务视图：dagre 分层布局（journey/pageflow/dataflow 左→右；features 按组网格） */
@@ -104,11 +122,12 @@ export function layoutBizView(view: BizView, staleIds: Set<string>, selectedId: 
     };
   });
   // 回流边判定：目标不在源的右侧（dagre 布完后源 x >= 目标 x），说明这条线要往回绕
+  const shifts = reversePairShifts(view.edges);
   const edges: Edge[] = view.edges.map((e, i) => {
     const s = g.node(e.source);
     const t = g.node(e.target);
     const back = !!s && !!t && t.x <= s.x;
-    return bizEdge(e, i, back);
+    return bizEdge(e, i, back, shifts.get(e.id) ?? 0);
   });
   return { nodes, edges };
 }
@@ -178,9 +197,9 @@ function layoutFeatureGrid(view: BizView, staleIds: Set<string>, selectedId: str
 
   // 功能总览是分组目录而非流程，不区分回流边（列序已按关系排过）
   const ids = new Set(view.nodes.map(n => n.id));
-  const edges: Edge[] = view.edges
-    .filter(e => ids.has(e.source) && ids.has(e.target))
-    .map((e, i) => bizEdge(e, i));
+  const visible = view.edges.filter(e => ids.has(e.source) && ids.has(e.target));
+  const shifts = reversePairShifts(visible);
+  const edges: Edge[] = visible.map((e, i) => bizEdge(e, i, false, shifts.get(e.id) ?? 0));
   return { nodes, edges };
 }
 
